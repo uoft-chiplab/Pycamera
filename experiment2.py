@@ -252,6 +252,8 @@ class Analysis( HasTraits ):
                     'delta_x':'pixels',
                     'z':'(p_R - p_L)',
                     'RMSE':'',
+                    'sigmaProd':'pixels^2',
+                    'N_ratio':'',
                     'goodFit':''}
 
    
@@ -287,6 +289,8 @@ class Analysis( HasTraits ):
                 'delta_x':zeros(self._history_len),\
                 'z':zeros(self._history_len),\
                 'RMSE':zeros(self._history_len),\
+                'sigmaProd':zeros(self._history_len),\
+                'N_ratio':zeros(self._history_len),\
                 'goodFit':zeros(self._history_len),\
                 'fit':0}
     # EDIT HERE
@@ -312,9 +316,19 @@ class Analysis( HasTraits ):
             desc='if the plot y-axis is autoscaled')
 
     # Max RMSE of the 1D gaussian fits for a fit to count as "good".
-    # Default is permissive; tune against real data.
-    rmse_tol = CFloat(1e9, desc='max RMSE for a fit to count as good',
+    # Tune against real data.
+    rmse_tol = CFloat(1.5, desc='max RMSE for a fit to count as good',
             label='RMSE tol')
+
+    # Max product of the fitted widths sigmaX*sigmaY for a fit to count as
+    # "good" (a runaway product signals a fit that has blown up).
+    sigma_prod_tol = CFloat(2000, desc='max sigmaX*sigmaY for a fit to count as good',
+            label='Sigma prod tol')
+
+    # Max allowed factor between the fit and pixel-sum atom numbers for a fit
+    # to count as "good" (they should agree to within this factor).
+    n_factor_tol = CFloat(2, desc='max factor between N_fit and N_pix_sum for a good fit',
+            label='N factor tol')
 
     # Event (button) to clear the stored_data buffer when it is full.
     clear_history = Event
@@ -398,7 +412,9 @@ class Analysis( HasTraits ):
                 orientation = 'horizontal',
             ),
             Group(
-                Item('rmse_tol', show_label=True, width=-60),
+                Item('rmse_tol', show_label=True, width=-60), spring,
+                Item('sigma_prod_tol', show_label=True, width=-60), spring,
+                Item('n_factor_tol', show_label=True, width=-60),
                 orientation = 'horizontal',
             ),
             Group(
@@ -589,9 +605,13 @@ class Analysis( HasTraits ):
             crunch_split_params(self.experiment, self.camera,\
                 pix_sum_left, pix_sum_right)
         # Goodness-of-fit of the 1D gaussian fits against the profile data.
-        rmse, goodFit = compute_fit_quality(h_xdata, h_gdata, h_fit,\
-            v_xdata, v_gdata, v_fit, self.rmse_tol)
+        rmse, sigma_prod, n_ratio, goodFit = compute_fit_quality(h_xdata,\
+            h_gdata, h_fit, v_xdata, v_gdata, v_fit, self.rmse_tol,\
+            self.sigma_prod_tol, self.phys_params['N_fit'],\
+            self.phys_params['N_pix_sum'], self.n_factor_tol)
         self.phys_params['RMSE'] = rmse
+        self.phys_params['sigmaProd'] = sigma_prod
+        self.phys_params['N_ratio'] = n_ratio
         self.phys_params['goodFit'] = goodFit
         # Display the params.
         self.display_line(self.make_output_string())
@@ -679,6 +699,8 @@ class Analysis( HasTraits ):
                 delta_x:  %s\n\
                 z:  %s\n\
                 RMSE:  %s\n\
+                sigmaProd:  %s\n\
+                N_ratio:  %s\n\
                 goodFit:  %s" % (\
                 self.shot_number,\
                 pretty_print(self.phys_params['N_fit']),\
@@ -702,6 +724,8 @@ class Analysis( HasTraits ):
                 pretty_print(self.phys_params['delta_x']),\
                 pretty_print(self.phys_params['z']),\
                 pretty_print(self.phys_params['RMSE']),\
+                pretty_print(self.phys_params['sigmaProd']),\
+                pretty_print(self.phys_params['N_ratio']),\
                 pretty_print(self.phys_params['goodFit']) )
         return output_string
         

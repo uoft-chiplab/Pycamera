@@ -555,16 +555,27 @@ def crunch_params(experiment_object, camera_object, matrix_view_object,\
     return phys_params
 
 def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
-                        rmse_tol):
+                        rmse_tol, sigma_prod_tol, N_fit, N_pix_sum, n_factor):
     """ Goodness-of-fit of the 1D gaussian fits against the profile data.
 
         Residuals are taken between the fitted gaussians (see 'gaussian1D')
         and the horizontal/vertical profile data used to produce the fits.
         The two profiles are pooled into a single set of residuals.
 
-        Returns (rmse, goodFit):
-            rmse    - root-mean-square of the pooled residuals
-            goodFit - 1 if rmse <= rmse_tol, else 0.
+        Three checks contribute to the goodFit flag:
+            - the pooled RMSE must be <= rmse_tol
+            - the product of the fitted gaussian widths sigmaX*sigmaY
+              (a runaway product signals a fit that has 'blown up') must
+              be <= sigma_prod_tol
+            - the fit atom number 'N_fit' and the pixel-sum atom number
+              'N_pix_sum' must agree to within a factor of 'n_factor'
+              (both must be positive)
+
+        Returns (rmse, sigma_prod, n_ratio, goodFit):
+            rmse       - root-mean-square of the pooled residuals
+            sigma_prod - product of the fitted widths, sqrt(h_fit[1])*sqrt(v_fit[1])
+            n_ratio    - N_fit / N_pix_sum (0 if N_pix_sum is 0)
+            goodFit    - 1 if ALL checks pass, else 0.
     """
     # Residuals of each 1D fit against its profile data.
     h_res = gaussian1D(h_xdata, h_fit) - h_gdata
@@ -575,8 +586,29 @@ def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
     # Root-mean-square error.
     rmse = sqrt(mean(res**2))
 
-    goodFit = 1 if rmse <= rmse_tol else 0
-    return rmse, goodFit
+    # Product of the fitted gaussian widths.  h_fit[1]/v_fit[1] are sigma**2
+    # (see gfit1D), matching the 'sigmaX'/'sigmaY' computed in crunch_params.
+    sigma_prod = sqrt(h_fit[1]) * sqrt(v_fit[1])
+
+    # Ratio of the two atom-number estimates (for display / history).
+    if N_pix_sum != 0:
+        n_ratio = N_fit / N_pix_sum
+    else:
+        n_ratio = 0
+
+    # The two atom-number estimates should agree to within 'n_factor'.  Both
+    # must be positive; a non-positive estimate is itself a sign of a bad fit.
+    if (N_fit > 0) and (N_pix_sum > 0) and \
+       (N_fit <= n_factor*N_pix_sum) and (N_pix_sum <= n_factor*N_fit):
+        n_ok = True
+    else:
+        n_ok = False
+
+    if (rmse <= rmse_tol) and (sigma_prod <= sigma_prod_tol) and n_ok:
+        goodFit = 1
+    else:
+        goodFit = 0
+    return rmse, sigma_prod, n_ratio, goodFit
 
 def pretty_print(item):
     """ Returns a string representation of an item.
