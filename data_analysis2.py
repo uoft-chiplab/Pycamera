@@ -553,7 +553,31 @@ def crunch_params(experiment_object, camera_object, matrix_view_object,\
     #        phys_params[key] = -1
     #
     return phys_params
-    
+
+def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
+                        rmse_tol):
+    """ Goodness-of-fit of the 1D gaussian fits against the profile data.
+
+        Residuals are taken between the fitted gaussians (see 'gaussian1D')
+        and the horizontal/vertical profile data used to produce the fits.
+        The two profiles are pooled into a single set of residuals.
+
+        Returns (rmse, goodFit):
+            rmse    - root-mean-square of the pooled residuals
+            goodFit - 1 if rmse <= rmse_tol, else 0.
+    """
+    # Residuals of each 1D fit against its profile data.
+    h_res = gaussian1D(h_xdata, h_fit) - h_gdata
+    v_res = gaussian1D(v_xdata, v_fit) - v_gdata
+    # Pool both profiles.
+    res = concatenate((h_res, v_res))
+
+    # Root-mean-square error.
+    rmse = sqrt(mean(res**2))
+
+    goodFit = 1 if rmse <= rmse_tol else 0
+    return rmse, goodFit
+
 def pretty_print(item):
     """ Returns a string representation of an item.
     """

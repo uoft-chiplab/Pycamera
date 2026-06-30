@@ -36,7 +36,7 @@ from time import localtime
 # Import analysis functions from data_analysis.py
 from data_analysis2 import gaussian1D, dic_to_string, fit_prep,\
         crunch_params, gfit1D, seed_gaussian1D, pretty_print,\
-        crunch_split_params, fit_prep2
+        crunch_split_params, fit_prep2, compute_fit_quality
 
 import pdb
 
@@ -250,7 +250,9 @@ class Analysis( HasTraits ):
                     'R_x':'pixels',
                     'delta_y':'pixels',
                     'delta_x':'pixels',
-                    'z':'(p_R - p_L)'}
+                    'z':'(p_R - p_L)',
+                    'RMSE':'',
+                    'goodFit':''}
 
    
 
@@ -284,6 +286,8 @@ class Analysis( HasTraits ):
                 'delta_y':zeros(self._history_len),\
                 'delta_x':zeros(self._history_len),\
                 'z':zeros(self._history_len),\
+                'RMSE':zeros(self._history_len),\
+                'goodFit':zeros(self._history_len),\
                 'fit':0}
     # EDIT HERE
     
@@ -304,8 +308,13 @@ class Analysis( HasTraits ):
     history_ymax = CFloat(1.0, desc='max. value of plot y-axis',
             label='max')
 
-    history_autoscale = true(label='Auto', 
+    history_autoscale = true(label='Auto',
             desc='if the plot y-axis is autoscaled')
+
+    # Max RMSE of the 1D gaussian fits for a fit to count as "good".
+    # Default is permissive; tune against real data.
+    rmse_tol = CFloat(1e9, desc='max RMSE for a fit to count as good',
+            label='RMSE tol')
 
     # Event (button) to clear the stored_data buffer when it is full.
     clear_history = Event
@@ -386,6 +395,10 @@ class Analysis( HasTraits ):
                 Item('history_ymin', show_label=True, width=-40), spring,
                 Item('history_ymax', show_label=True, width=-40), spring,
                 Item('history_autoscale', show_label=True),
+                orientation = 'horizontal',
+            ),
+            Group(
+                Item('rmse_tol', show_label=True, width=-60),
                 orientation = 'horizontal',
             ),
             Group(
@@ -575,6 +588,11 @@ class Analysis( HasTraits ):
             self.splitting.p_L = \
             crunch_split_params(self.experiment, self.camera,\
                 pix_sum_left, pix_sum_right)
+        # Goodness-of-fit of the 1D gaussian fits against the profile data.
+        rmse, goodFit = compute_fit_quality(h_xdata, h_gdata, h_fit,\
+            v_xdata, v_gdata, v_fit, self.rmse_tol)
+        self.phys_params['RMSE'] = rmse
+        self.phys_params['goodFit'] = goodFit
         # Display the params.
         self.display_line(self.make_output_string())
         # Write cost from specified param if exists
@@ -659,7 +677,9 @@ class Analysis( HasTraits ):
                 T_x:  %s\n\
                 delta_y:  %s\n\
                 delta_x:  %s\n\
-                z:  %s" % (\
+                z:  %s\n\
+                RMSE:  %s\n\
+                goodFit:  %s" % (\
                 self.shot_number,\
                 pretty_print(self.phys_params['N_fit']),\
                 pretty_print(self.phys_params['N_pix_sum']),\
@@ -680,14 +700,19 @@ class Analysis( HasTraits ):
                 pretty_print(self.phys_params['R_x']),\
                 pretty_print(self.phys_params['delta_y']),\
                 pretty_print(self.phys_params['delta_x']),\
-                pretty_print(self.phys_params['z']) )
+                pretty_print(self.phys_params['z']),\
+                pretty_print(self.phys_params['RMSE']),\
+                pretty_print(self.phys_params['goodFit']) )
         return output_string
         
     def write_cost(self, param_str):
         """
             For ML optimization. After a fit, write selected parameter to cost_ddd.txt
+            Only write the real value when the fit is good; otherwise write 0.
         """
         cost = self.phys_params[param_str]
+        if not self.phys_params.get('goodFit'):
+            cost = 0
         index = self.shot_number
         filename = "cost_%03d.txt" % index
         filepath = os.path.dirname(self.file_name)
