@@ -1,0 +1,122 @@
+"""
+lib_pixis.py                                  
+=========================================================================
+
+Gael Varoquaux, 10/06/06
+
+Python file creating the interface between lib_pixis.dll, coded in C, and 
+python. This uses ctypes with numpy. See http://scipy.org/Cookbook/Ctypes2
+for a minimal exemple
+
+The basic idea of the interfacing is that the input and output type of each
+C function are defined, then a C wrapper function is created.
+
+I wouldn't recommend modifying this if you don't know what you are doing.
+"""
+#############################################################################
+
+import numpy
+import ctypes
+
+# Load the C library
+#_lib_pixis = numpy.ctypeslib.load_library('lib_pixis', '.')
+_lib_pixis = numpy.ctypeslib.load_library('lib_pixis', '.\\C_interface\\Debug')
+
+_lib_pixis.open.restype = ctypes.c_int
+def open():
+    """ Calls lib_pixis to initialise the camera.
+    """
+    error = _lib_pixis.open()
+    if not error :
+        print "The camera initialisation returned an error, are you sure the camera is on ?"
+    return error
+
+_lib_pixis.close.restype = ctypes.c_int
+def close():
+    """ Calls lib_pixis to close the camera.
+    """
+    error = _lib_pixis.close()
+    if not error:
+        print "The camera closing returned an error"
+    return error
+
+_lib_pixis.triggered_open_shutter.restype = ctypes.c_int
+def triggered_open_shutter():
+    """ Calls lib_pixis to open the shutter at next trigger.
+    """
+    error = _lib_pixis.triggered_open_shutter()
+    if not error:
+        print "Couldn't open the shutter"
+    return error
+
+_lib_pixis.triggered_close_shutter.restype = ctypes.c_int
+def triggered_close_shutter():
+    """ Calls lib_pixis to close the shutter at next trigger.
+    """
+    error = _lib_pixis.triggered_close_shutter()
+    if not error:
+        print "Couldn't close the shutter"
+    return error
+
+_lib_pixis.open_shutter.restype = ctypes.c_int
+def open_shutter():
+    """ Calls lib_pixis to open the shutter right away.
+    """
+    error = _lib_pixis.open_shutter()
+    if not error:
+        print "Couldn't open the shutter"
+    return error
+
+_lib_pixis.close_shutter.restype = ctypes.c_int
+def close_shutter():
+    """ Calls lib_pixis to close the shutter right away.
+    """
+    error = _lib_pixis.close_shutter()
+    if not error:
+        print "Couldn't close the shutter"
+    return error
+
+
+_lib_pixis.acquire.restype = ctypes.c_int
+_lib_pixis.acquire.argtype = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                        ctypes.c_int, ctypes.POINTER(ctypes.c_int), ctypes.c_int]
+def acquire(exposure_time, num_img, binning_X, binning_Y, gain, kyn_win_size,
+                        ADC_speed, row_shift_speed, buffer):
+    """ Calls lib_pixis to retrive the images. Clears the buffer when done.
+    """
+    error = _lib_pixis.acquire(exposure_time, num_img, binning_X, binning_Y, gain,
+                    kyn_win_size, ADC_speed, row_shift_speed,
+                    buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    buffer.size)
+    return error
+
+
+#_lib_pixis.get_buffer_size.restype = ctypes.c_int
+#_lib_pixis.get_buffer_size.argtype = [ctypes.c_int, ctypes.c_int, ctypes.c_int, 
+#                                        ctypes.POINTER(ctypes.c_int)]
+#def get_buffer_size(num_img, binning_X, binning_Y, buffer_size):
+#    """ Calls lib_pixis to find out what should be the size of the buffer, with the
+#        given parameters.
+#    """
+#    # Buffer_size should be an array, so that we can pass it by reference to python.
+#    error = _lib_pixis.get_buffer_size( num_img, binning_X, binning_Y,
+#                    buffer_size.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))
+#    return error
+#
+
+
+
+if __name__ == '__main__':
+    print "A few tests to see if the camera is working\n"
+    print "testing open()"
+    open()
+    print "testing open_shutter()"
+    open_shutter()
+    print "testing close_shutter()"
+    close_shutter()
+    print "testing close()"
+    close()
+    raw_input("Press a key to end")
+
+# :vim:nocindent:

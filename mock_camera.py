@@ -1,0 +1,205 @@
+""" A camera object. This implementation is a false camera object that allows 
+    to work without a camera.
+"""
+
+# To have Traits understand numpy
+import os
+os.environ['NUMERIX']='numpy'
+
+from numpy import * 
+from data_analysis2 import gaussian2D
+
+# To have Traits understand numpy
+import os
+os.environ['NUMERIX']='numpy'
+
+from time import sleep
+
+# Enthought imports.
+from enthought.traits import *
+from enthought.traits.ui import View, Group, Item, ui, ButtonEditor, \
+        InstanceEditor, spring, VGroup, EnumEditor
+
+##########################################################################
+# The camera object
+##########################################################################
+
+class PixisCamera( HasTraits ):
+    """ Class that implements a mock camera object. For the documentation, 
+        see the PixisCamera class provided by the pixis_camera module.
+    """
+    ADC_speed = { '100kHz':0, '2MHz':1 }
+
+    selected_ADC_speed = Str('100kHz', label='ADC',
+                desc='the speed of ADC digitiziation / readout')
+    
+    _ADC_list = List()
+
+    def __ADC_list_default(self):
+        """ Initialized the ADC speed enum when the object is created.
+        """
+        return self.ADC_speed.keys()
+    
+    row_shift_time = Enum(3.2, 5.0, 15.0, 30.2, label="Shift",
+            desc="the time in microseconds to shift one row of pixels\
+            in kinetics mode")
+
+    gain = Enum(1,2,3,
+        desc="the gain index of the camera",
+        label="gain", )
+
+    exposure = CInt(100,
+        desc="the exposure time, in microseconds",
+        label="Exposure", )
+    
+    number_images = Int(1,
+        desc="the number of images acquired in one sequence",
+        label="Number of images", ) 
+        # This is not shown as I do not want people to add
+        # more Images and screw the acquisition process.
+    
+    _CCD_size = Int(1024)   # The Pixis 1024BR has a 1024 x 1024 pixel array
+   
+    # Kinetics mode acquisition settings.
+    _kin_win_size = Int(512,
+        desc="the kinetics windows size, in the parallel direction",
+        label="Kinetics window", )
+        # This is not shown.  Should be calculated based on num_kin_shots and
+        # CCD_size only!  Default value = 1024/2 = 512
+    
+    num_kin_shots = Enum(2,4,#3, avoid 3-shot kinetics - nasty arithmatic!
+        desc='the number of kinetics mode sub-images',
+        label='Sub-images')
+    
+    binning_X = Enum(1,2,4,8,
+        desc="Amount of binning on the X direction",
+        label="Bins: horiz.")
+    
+    binning_Y = Enum(1,2,4,8,
+        desc="Amount of binning on the Y direction",
+        label="vert.")
+    
+    # Keep track of 'previous' kinetics mode settings.
+    old_num_kin_shots = Int(2)
+    old_binning_X = Int(1)
+    old_binning_Y = Int(1)
+
+    def _num_kin_shots_changed(self, old, new):
+        """ Executed by traits magic wth num_kin_shots changes.
+            Updates kin_win_size.
+        """
+        # Divide, round, then truncate to integer.
+        # NB. Binning is taken care of in acquisition job (pycamera.py)
+        self._kin_win_size = ( round(\
+            (self._CCD_size/self.num_kin_shots), 0) ).__int__()
+        # Update 'old' attribute
+        self.old_num_kin_shots = old
+        print "old_num_kin_shots = %d" % self.old_num_kin_shots
+        
+    def _binning_X_changed(self, old, new):
+        """ Executed by traits magic when binning_X changes."""
+        self.old_binning_X = old
+        print "old_binning_X = %d" % self.old_binning_X
+    
+    def _binning_Y_changed(self, old, new):
+        """ Executed by traits magic when binning_X changes."""
+        self.old_binning_Y = old
+        print "old_binning_Y = %d" % self.old_binning_Y
+    
+    # Use this to hide num_kin_shots, binning_X and binning_Y during 
+    # acquisition to prevent nasty threading / acquisition errors.
+    _kin_visible = true
+    
+    # Size of the Pixis data buffer.  Updated by method 'get_buffer_size()'
+    buffer_size = CInt
+    
+    view = View(Group(
+            Group(  Item('exposure', width=-100), 
+                    Item('gain', width=-100),
+                    Item('selected_ADC_speed',
+                        editor=EnumEditor(name='_ADC_list'), width=-100), 
+                    Item('row_shift_time', width=-100,)
+                 ), 
+            spring,
+            Group(  Item('num_kin_shots', width=-100),
+                    Group( 
+                        'binning_X',
+                        spring,
+                        'binning_Y',
+                        orientation='horizontal',
+                        ),
+                    visible_when='_kin_visible',
+                    show_border=True, label="Kinetics"),
+            orientation='vertical'),
+            )
+ 
+    def open(self):
+        """ Call to initialiase the camera.
+        """
+        return self.get_buffer_size()
+
+    def close(self):
+        """ Call to close the camera.
+        """
+        self.close_shutter()
+        return 1 
+
+    def open_shutter(self):
+        """ Opens the shutter right away.
+        """
+        return 1 
+
+    def close_shutter(self):
+        """ Close the shutter right away.
+        """
+        return 1 
+
+    def acquire(self):
+        """ Captures the sequence. This is a blocking call, it does not return
+            until the images are captured and transfered.
+        """
+        # Sleep two seconds, to simulate waiting for a trigger signal
+        sleep(1)
+        # You better type this as integer, or when you pass it to C, you're 
+        # in for surprises !
+        #pdb.set_trace()
+        data = zeros(self.buffer_size,dtype='i')
+        # Calculate Y_size before the call to acquire, so that if someone
+        # changes self.binning_Y through the GUI during the acquisition will
+        # stil have the value with wich the acquisition was started.
+        Y_size = float(self._CCD_size/self.binning_Y)
+        data = data.reshape((Y_size,-1))
+        # 'data' now has 'Y_size' rows and 'buffer_size/Y_size' columns.
+        [Y,X] = indices(data.shape)
+        # Fake optical density data.
+        data = ( gaussian2D(X, Y, array([1, 625, 36, data.shape[1]/1.5,
+                data.shape[0]/6, 0.1])) 
+                + 0.2*( random.rand(self.buffer_size).reshape((Y_size,-1)) - 0.5 )
+                )
+        #print ("data.shape[0]", data.shape[0])  # num. rows
+        #print ("data.shape[1]", data.shape[1])  # num. columns
+        #print "y centre = %d" % int(data.shape[0])/4
+        #data += -data.min() + 10
+        #data = 4096*data/data.max()
+        data = 0.2*data 
+        return data 
+
+    def get_buffer_size(self):
+        """ Sets the buffer size by querying lib_pixis.
+        """
+        # We need an array with an int in it to be able to pass an int by 
+        # reference to C.
+        buffer_size = array([0])
+        #buffer_size = 1024*512./(self.binning_X* self.binning_Y)
+        buffer_size = 1024*1024./(self.binning_X* self.binning_Y)
+        self.buffer_size = buffer_size
+
+    def triggered_open_shutter(self):
+        """ Opens the shutter at the next trigger.
+        """
+        return 1 
+
+    def triggered_close_shutter(self):
+        """ Close the shutter at the next trigger.
+        """
+        return 1 

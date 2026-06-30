@@ -1,0 +1,125 @@
+8
+
+dir
+58
+file:///E:/camera_program/repository/Pycamera/C_interface
+file:///E:/camera_program/repository
+
+
+
+2008-05-13T12:58:19.196500Z
+52
+David Burns
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+8fe8b8ad-1c74-dd45-a6a8-ebfc9c5ddb3c
+
+stdafx.h
+file
+
+
+
+
+2006-11-13T07:37:00.000000Z
+4630ebf0f25dca5705f0b0fb7d509704
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+
+Pvcam32.lib
+file
+
+
+
+
+2006-11-13T07:37:00.000000Z
+d52977ec935ee26a2f7323a29ddaa03e
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+has-props
+
+master.h
+file
+
+
+
+
+2006-11-13T07:37:00.000000Z
+48a6d57733d802976418790e6f5d8c12
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+
+lib_pixis.cpp
+file
+
+
+
+
+2008-04-25T15:14:13.953125Z
+b0c353c44e115a5bbf4db0c691f0ba9e
+2008-05-13T12:58:19.196500Z
+52
+David Burns
+
+foo.vcproj
+file
+
+
+
+
+2006-11-13T07:37:00.000000Z
+1e4c51cf2b73bd8b0eb644aed7406b5d
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+
+stdafx.cpp
+file
+
+
+
+
+2006-11-13T07:37:00.000000Z
+bd9c66e982215b4e3f6eaf039080c8f4
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+
+pvcam.h
+file
+
+
+
+
+2006-11-13T07:36:00.000000Z
+1e8bee35ab6d83ed7b47b475dbe139c8
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+
+lib_pixis.sln
+file
+
+
+
+
+2006-11-13T07:38:00.000000Z
+352b663f735f36379ad8ae966498a7f1
+2006-10-07T03:43:08.750000Z
+24
+David Burns
+

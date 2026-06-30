@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class pixis_camera.PixisCamera</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="pixis_camera.html">pixis_camera</a>.</span><a href="pixis_camera.PixisCamera.html">PixisCamera</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>Class that implements a Pixis camera. The attributs of the class
+describe the camera and are used to create a graphical representation.</p>
+<p>High level methods are provided to control the camera.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+<li><a href="#section-functions">Methods</a></li>
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="ADC_speed">ADC_speed<div class="document">
+</div>
+<pre>ADC_speed = Enum('100kHz', '2MHz', desc = 'the speed of the Analog to Digital converter that reads the image', label = 'ADC: speed')
+
+</pre></li>
+
+  <li class="attribute" id="binning_X">binning_X<div class="document">
+</div>
+<pre>binning_X = Enum(1, 2, 4, 8, desc = 'Amount of binning on the X direction', label = 'Binning:  X')
+
+</pre></li>
+
+  <li class="attribute" id="binning_Y">binning_Y<div class="document">
+</div>
+<pre>binning_Y = Enum(1, 2, 4, 8, desc = 'Amount of binning on the Y direction', label = 'Y')
+
+</pre></li>
+
+  <li class="attribute" id="buffer_size">buffer_size<div class="document">
+</div>
+<pre>buffer_size = CInt
+
+</pre></li>
+
+  <li class="attribute" id="exposure">exposure<div class="document">
+</div>
+<pre>exposure = CInt(10, desc = 'the exposure time, in ms', label = 'Exposure')
+
+</pre></li>
+
+  <li class="attribute" id="gain">gain<div class="document">
+</div>
+<pre>gain = Enum(1, 2, 3, desc = 'the gain index of the camera', label = 'gain')
+
+</pre></li>
+
+  <li class="attribute" id="kin_win_size">kin_win_size<div class="document">
+</div>
+<pre>kin_win_size = Int(511, desc = 'the kinetics windows size, in the parallel direction', label = 'Kinetics window')
+
+</pre></li>
+
+  <li class="attribute" id="number_images">number_images<div class="document">
+</div>
+<pre>number_images = Int(1, desc = 'the number of images acquired in one sequence', label = 'Number of images')
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+</div>
+<pre>view = View(Group(Group(Item('exposure', width = -Const(70)), spring, 'binning_X', 'binning_Y', orientation = 'horizontal'), Group(Item('ADC_speed', style = 'readonly'), spring, 'gain', spring, orientation = 'horizontal')))
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+<h2 id="section-functions">Method summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#acquire">acquire</a>(self)</li>
+  
+  <li class="function"><a href="#close">close</a>(self)</li>
+  
+  <li class="function"><a href="#close_shutter">close_shutter</a>(self)</li>
+  
+  <li class="function"><a href="#get_buffer_size">get_buffer_size</a>(self)</li>
+  
+  <li class="function"><a href="#open">open</a>(self)</li>
+  
+  <li class="function"><a href="#open_shutter">open_shutter</a>(self)</li>
+  
+  <li class="function"><a href="#triggered_close_shutter">triggered_close_shutter</a>(self)</li>
+  
+  <li class="function"><a href="#triggered_open_shutter">triggered_open_shutter</a>(self)</li>
+  
+</ul>
+
+
+
+
+<h2>Methods</h2>
+<ul class="doclist">
+  
+  <li id="acquire" class="function">acquire(self)<div class="document">
+<p>Captures the sequence. This is a blocking call, it does not return
+until the images are captured and transfered. This uses the
+attributs of the object to derive the parameters of the acquisition.</p>
+</div>
+</li>
+  
+  <li id="close" class="function">close(self)<div class="document">
+<p>Call to close the camera.</p>
+</div>
+</li>
+  
+  <li id="close_shutter" class="function">close_shutter(self)<div class="document">
+<p>Close the shutter right away.</p>
+</div>
+</li>
+  
+  <li id="get_buffer_size" class="function">get_buffer_size(self)<div class="document">
+<p>Sets the buffer size by querying lib_pixis. It is necessary to do
+This before an acquisition, as python needs to provide the right
+amount of memory to the C routines.</p>
+</div>
+</li>
+  
+  <li id="open" class="function">open(self)<div class="document">
+<p>Call to initialiase the camera.</p>
+</div>
+</li>
+  
+  <li id="open_shutter" class="function">open_shutter(self)<div class="document">
+<p>Opens the shutter right away.</p>
+</div>
+</li>
+  
+  <li id="triggered_close_shutter" class="function">triggered_close_shutter(self)<div class="document">
+<p>Close the shutter at the next trigger.</p>
+</div>
+</li>
+  
+  <li id="triggered_open_shutter" class="function">triggered_open_shutter(self)<div class="document">
+<p>Opens the shutter at the next trigger.</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

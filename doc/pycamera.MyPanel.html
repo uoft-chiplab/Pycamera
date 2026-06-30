@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class pycamera.MyPanel</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="pycamera.html">pycamera</a>.</span><a href="pycamera.MyPanel.html">MyPanel</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>A wrapper class, to display several objects on the same panel. It
+allows the graphical representation of several different objects
+in the same panel by using these objects as its attributes.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="acquisition_thread">acquisition_thread<div class="document">
+</div>
+<pre>acquisition_thread = Instance(<a href="thread_runner.ThreadRunner.html">ThreadRunner</a>)
+
+</pre></li>
+
+  <li class="attribute" id="analysis">analysis<div class="document">
+</div>
+<pre>analysis = Instance(<a href="experiment.Analysis.html">Analysis</a>)
+
+</pre></li>
+
+  <li class="attribute" id="camera">camera<div class="document">
+</div>
+<pre>camera = Instance(<a href="mock_camera.PixisCamera.html">PixisCamera</a>)
+
+</pre></li>
+
+  <li class="attribute" id="experiment">experiment<div class="document">
+</div>
+<pre>experiment = Instance(<a href="experiment.Experiment.html">Experiment</a>)
+
+</pre></li>
+
+  <li class="attribute" id="matrix_view">matrix_view<div class="document">
+</div>
+<pre>matrix_view = Instance(<a href="matrix_view.MatrixView.html">MatrixView</a>)
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+</div>
+<pre>view = View(Group(Group(Group(Item('acquisition_thread', style = 'custom', show_label = False), orientation = 'horizontal', label = 'Acquisition', show_border = True), Group(Item('matrix_view', style = 'custom', show_label = False), orientation = 'horizontal', show_border = True, label = 'Display'), orientation = 'horizontal'), Group(Item('experiment', style = 'custom', show_label = False), label = 'Experimental parameters', show_border = True), Group(Item('camera', style = 'custom', show_label = False), label = 'Camera', show_border = True), Item('analysis', style = 'custom', show_label = False)))
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

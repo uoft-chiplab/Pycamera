@@ -1,0 +1,200 @@
+html {
+  font-family: "Arial", sans-serif;
+  /* background-color: #c4cccf; */
+  background-color: white;
+  color: black;
+}
+
+#header {
+  border: 1px solid black;
+  background-color: #d9d9d9;
+  height: 100px;
+}
+
+#header h1 {
+  margin: 3px;
+  font-size: 18pt;
+}
+
+#nav-bar {
+  margin: 0;
+  padding: 0;
+  float: right;
+  width: 150px;
+}
+
+#nav-bar ul {
+  padding: 3px;
+  margin: 0;
+}
+
+#nav-bar li {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  padding-top: 2px;
+/*  border-top: 1px solid gray; */
+}
+
+#contents {
+  margin: 0;
+  margin-top: 10px;
+  padding: 0;
+}
+
+#contents ul {
+  border: 1px solid gray;
+  background-color: #d9d9d9;
+}
+
+#contents li {
+  display: inline;
+  list-style-type: none;
+  margin: 0;
+  border: 0;
+  padding-right: 10px;
+  padding-left: 10px;
+}
+
+#main {
+  margin-top: 20px;
+}
+
+a:link, a:visited {
+  text-decoration: none;
+  color: blue;
+}
+
+a:hover { 
+  text-decoration: underline;
+  color: blue;
+}
+
+dl {
+  font-size: smaller;
+}
+
+h1 {
+  font-size: 18pt;
+}
+
+h2 {
+  font-size: 16pt;
+}
+
+h3 {
+  font-size: 12pt;
+  margin-bottom: 0;
+}
+
+h4 {
+  font-size: 10pt;
+}
+
+h5 {
+  font-size: 9pt;
+}
+
+li {
+  /*font-size: larger;*/
+}
+
+p {
+  font-size: smaller;
+  line-height: 1.2em;
+  margin-top: 1ex;
+}
+
+pre {
+  font-weight: normal;
+}
+
+/* name prefixes should be small */
+.prefix {
+  font-weight: lighter;
+}
+
+.doclist li { 
+  margin-bottom: 2px;
+}
+
+table.imported-names {
+  border-collapse: collapse;
+  background: white;
+  border: 3px black solid;
+}
+
+th, td {
+  vertical-align: top;
+  text-align: left;
+  padding: 3px;
+}
+
+table.imported-names th {
+  border-top: 3px black solid;
+  border-bottom: 3px black solid;
+  border-left: 1px black solid;
+  border-right: 1px black solid;
+  background: #aaf;
+}
+
+table.imported-names td {
+  border: 1px black solid;
+}
+
+table.hierarchy {
+  background: inherit;
+  color: inherit;
+  border: none;
+  width: 100%;
+  table-layout: fixed;
+}
+
+table.hierarchy td {
+  vertical-align: top;
+  border: none;
+}
+
+table.hierarchy td.icon .icon {
+  display: block;
+}
+
+table.hierarchy td.icon {
+  width: 2.5em;
+  font-family: monospace;
+}
+
+table.hierarchy td.absname {
+  width: 50%;
+}
+
+table.hierarchy td.icon .icon:hover {
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+li.trait {
+  font-weight: normal;
+}
+li.function {
+    font-size: larger;
+    margin-top: 1ex;
+}
+
+div.smallbox {
+  border: 1px black solid;
+  background-color: white;
+  color: black;
+  font-size: 75%;
+  margin: 3em;
+  padding: 1em;
+  width: auto;
+}
+
+div.smallbox h3 {
+  margin: 0;
+  font-size: 12pt;
+}

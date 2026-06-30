@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Module pycamera</title>
+    <link rel="stylesheet" type="text/css" href="module.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Module <span class="prefix"></span><a href="pycamera.html">pycamera</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>file <cite>pycamera.py</cite></p>
+<div class="section">
+<h3><a id="pycamera-absorption-imaging-pixis-camera" name="pycamera-absorption-imaging-pixis-camera">pycamera: absorption imaging, pixis camera</a></h3>
+<p>This a the main file of the application. It build a series of objects that it
+is going to represent in a window.</p>
+<p>The windows is itself an object, it has two panesl, each objects.</p>
+<p>The left hand side panel is divided in two and has to sons: the upper panel and
+the lower panel. Each are objects derived from MPLWidget: the MatPlotLib
+Widget, wich is a wrapper to a MatPlotLib canvas and allows plotting of
+scientific graphs.</p>
+<p>The lower left panel is a simple MPLWidget object, and exposes the <cite>axes</cite> of a
+MatPlotLib graph. Similar to MatLab axes, these allow to plot in them.</p>
+<p>The upper left panel is a <cite>MatrixView</cite> object. It has a &quot;data&quot; attribute,
+which should be a dictionary of 2D arrays, and it creates a pseudo-color
+representation of these matrices with its &quot;update()&quot; method.</p>
+<p>The right panel contains a representation of the different objects used to
+control the camera and to describe the experiment. The representation is
+automatically created from the object's attributs using the traitsUI package.
+see <a class="reference" href="http://code.enthought.com/traits/">http://code.enthought.com/traits/</a> .</p>
+</div>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+
+<li><a href="#section-variables">Variables</a></li>
+
+
+
+<li><a href="#section-classes">Classes</a></li>
+
+
+<li><a href="#section-functions">Functions</a></li>
+
+
+<li><a href="#section-imports">Imported names</a></li>
+
+</ul>
+</div>
+
+
+
+
+
+
+
+<h2 id="section-variables">Variables</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="acquisition_thread">acquisition_thread<div class="document">
+<p>The acquisition thread object</p>
+</div>
+<pre>acquisition_thread = <a href="thread_runner.ThreadRunner.html">ThreadRunner</a>(job = <a href="pycamera.html#acquisition_job">acquisition_job</a>)
+
+</pre></li>
+
+  <li class="attribute" id="analysis">analysis<div class="document">
+<p>The object that performs the analysis of the data on the fly.</p>
+</div>
+<pre>analysis = <a href="experiment.Analysis.html">Analysis</a>(experiment = <a href="pycamera.html#experiment">experiment</a>, camera = <a href="pycamera.html#camera">camera</a>)
+
+</pre></li>
+
+  <li class="attribute" id="camera">camera<div class="document">
+<p>The object to discribe the camera.</p>
+</div>
+<pre>camera = <a href="mock_camera.PixisCamera.html">PixisCamera</a>()
+
+</pre></li>
+
+  <li class="attribute" id="experiment">experiment<div class="document">
+<p>The object to discribe the experiment.</p>
+</div>
+<pre>experiment = <a href="experiment.Experiment.html">Experiment</a>()
+
+</pre></li>
+
+  <li class="attribute" id="my_panel">my_panel<div class="document">
+<p>Create the right-hand-side panel object.</p>
+</div>
+<pre>my_panel = <a href="pycamera.MyPanel.html">MyPanel</a>(experiment = <a href="pycamera.html#experiment">experiment</a>, acquisition_thread = <a href="pycamera.html#acquisition_thread">acquisition_thread</a>, camera = <a href="pycamera.html#camera">camera</a>, analysis = <a href="pycamera.html#analysis">analysis</a>)
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+<h2 id="section-classes">Classes</h2>
+<ul class="doclist">
+  
+  <li id="LeftPanel" class="class"><a href="pycamera.LeftPanel.html">LeftPanel</a> - This is a subclass of pyface's SplitPanel, and is therefore a panel</li>
+  
+  <li id="MainWindow" class="class"><a href="pycamera.MainWindow.html">MainWindow</a> - This is the main window of the program. It is a subclass of pyface's</li>
+  
+  <li id="MyPanel" class="class"><a href="pycamera.MyPanel.html">MyPanel</a> - A wrapper class, to display several objects on the same panel. It </li>
+  
+</ul>
+
+
+
+
+<h2 id="section-functions">Function summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#acquisition_job">acquisition_job</a>(thread)</li>
+  
+</ul>
+
+
+<h2>Functions</h2>
+<ul class="doclist">
+  
+  <li id="acquisition_job" class="function">acquisition_job(thread)<div class="document">
+<p>Function that runs the acquisition loop. Will be called in a non
+blocking way (in a seperate thread), and aborts when
+thread.wants_abort is true.</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+<h2 id="section-imports">Imported names</h2>
+<table summary="imported names" class="imported-names">
+  <thead>
+    <tr><th>Local name</th><th>Refers to</th></tr>
+  </thead>
+  <tbody>
+
+  <tr id="Analysis"><td>Analysis</td><td><a href="experiment.Analysis.html">experiment.Analysis</a></td></tr>
+
+  <tr id="ButtonEditor"><td>ButtonEditor</td><td>enthought.traits.ui.ButtonEditor</td></tr>
+
+  <tr id="enthought.traits.ui.wx.view_application"><td>enthought.traits.ui.wx.view_application</td><td>enthought.traits.ui.wx.view_application</td></tr>
+
+  <tr id="Experiment"><td>Experiment</td><td><a href="experiment.Experiment.html">experiment.Experiment</a></td></tr>
+
+  <tr id="Group"><td>Group</td><td>enthought.traits.ui.Group</td></tr>
+
+  <tr id="InstanceEditor"><td>InstanceEditor</td><td>enthought.traits.ui.InstanceEditor</td></tr>
+
+  <tr id="Item"><td>Item</td><td>enthought.traits.ui.Item</td></tr>
+
+  <tr id="localtime"><td>localtime</td><td>time.localtime</td></tr>
+
+  <tr id="MatrixView"><td>MatrixView</td><td><a href="matrix_view.MatrixView.html">matrix_view.MatrixView</a></td></tr>
+
+  <tr id="MPLWidget"><td>MPLWidget</td><td><a href="mplwidget.MPLWidget.html">mplwidget.MPLWidget</a></td></tr>
+
+  <tr id="os"><td>os</td><td>os</td></tr>
+
+  <tr id="PixisCamera"><td>PixisCamera</td><td><a href="mock_camera.PixisCamera.html">mock_camera.PixisCamera</a></td></tr>
+
+  <tr id="sleep"><td>sleep</td><td>time.sleep</td></tr>
+
+  <tr id="spring"><td>spring</td><td>enthought.traits.ui.spring</td></tr>
+
+  <tr id="TextEditor"><td>TextEditor</td><td>enthought.traits.ui.TextEditor</td></tr>
+
+  <tr id="ThreadRunner"><td>ThreadRunner</td><td><a href="thread_runner.ThreadRunner.html">thread_runner.ThreadRunner</a></td></tr>
+
+  <tr id="ui"><td>ui</td><td>enthought.traits.ui.ui</td></tr>
+
+  <tr id="VGroup"><td>VGroup</td><td>enthought.traits.ui.VGroup</td></tr>
+
+  <tr id="View"><td>View</td><td>enthought.traits.ui.View</td></tr>
+
+  </tbody>
+</table>
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

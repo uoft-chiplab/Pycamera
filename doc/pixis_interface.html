@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Module pixis_interface</title>
+    <link rel="stylesheet" type="text/css" href="module.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Module <span class="prefix"></span><a href="pixis_interface.html">pixis_interface</a></h1>
+    
+    </div>
+
+    
+
+<div class="document" id="lib-pixis-py">
+<h3 class="title">lib_pixis.py</h3>
+<p>Gael Varoquaux, 10/06/06</p>
+<p>Python file creating the interface between lib_pixis.dll, coded in C, and
+python. This uses ctypes with numpy. See <a class="reference" href="http://scipy.org/Cookbook/Ctypes2">http://scipy.org/Cookbook/Ctypes2</a>
+for a minimal exemple</p>
+<p>The basic idea of the interfacing is that the input and output type of each
+C function are defined, then a C wrapper function is created.</p>
+<p>I wouldn't recommend modifying this if you don't know what you are doing.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+
+
+
+
+<li><a href="#section-functions">Functions</a></li>
+
+
+<li><a href="#section-imports">Imported names</a></li>
+
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 id="section-functions">Function summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#acquire">acquire</a>(exposure_time, num_img, binning_X, binning_Y, gain, kyn_win_size, readout_port, buffer)</li>
+  
+  <li class="function"><a href="#close">close</a>()</li>
+  
+  <li class="function"><a href="#close_shutter">close_shutter</a>()</li>
+  
+  <li class="function"><a href="#get_buffer_size">get_buffer_size</a>(num_img, binning_X, binning_Y, buffer_size)</li>
+  
+  <li class="function"><a href="#open">open</a>()</li>
+  
+  <li class="function"><a href="#open_shutter">open_shutter</a>()</li>
+  
+  <li class="function"><a href="#triggered_close_shutter">triggered_close_shutter</a>()</li>
+  
+  <li class="function"><a href="#triggered_open_shutter">triggered_open_shutter</a>()</li>
+  
+</ul>
+
+
+<h2>Functions</h2>
+<ul class="doclist">
+  
+  <li id="acquire" class="function">acquire(exposure_time, num_img, binning_X, binning_Y, gain, kyn_win_size, readout_port, buffer)<div class="document">
+<p>Calls lib_pixis to retrive the images. Clears the buffer when done.</p>
+</div>
+</li>
+  
+  <li id="close" class="function">close()<div class="document">
+<p>Calls lib_pixis to close the camera.</p>
+</div>
+</li>
+  
+  <li id="close_shutter" class="function">close_shutter()<div class="document">
+<p>Calls lib_pixis to close the shutter right away.</p>
+</div>
+</li>
+  
+  <li id="get_buffer_size" class="function">get_buffer_size(num_img, binning_X, binning_Y, buffer_size)<div class="document">
+<p>Calls lib_pixis to find out what should be the size of the buffer, with the
+given parameters.</p>
+</div>
+</li>
+  
+  <li id="open" class="function">open()<div class="document">
+<p>Calls lib_pixis to initialise the camera.</p>
+</div>
+</li>
+  
+  <li id="open_shutter" class="function">open_shutter()<div class="document">
+<p>Calls lib_pixis to open the shutter right away.</p>
+</div>
+</li>
+  
+  <li id="triggered_close_shutter" class="function">triggered_close_shutter()<div class="document">
+<p>Calls lib_pixis to close the shutter at next trigger.</p>
+</div>
+</li>
+  
+  <li id="triggered_open_shutter" class="function">triggered_open_shutter()<div class="document">
+<p>Calls lib_pixis to open the shutter at next trigger.</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+<h2 id="section-imports">Imported names</h2>
+<table summary="imported names" class="imported-names">
+  <thead>
+    <tr><th>Local name</th><th>Refers to</th></tr>
+  </thead>
+  <tbody>
+
+  <tr id="ctypes"><td>ctypes</td><td>ctypes</td></tr>
+
+  <tr id="numpy"><td>numpy</td><td>numpy</td></tr>
+
+  </tbody>
+</table>
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

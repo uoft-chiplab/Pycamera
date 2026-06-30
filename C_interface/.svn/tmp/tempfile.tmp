@@ -1,0 +1,462 @@
+/******************************************************************************
+ * lib_pixis.cpp                              Gael Varoquaux, 10/06/06
+ * ***************************************************************************
+ * C file implementing the low level routines to control the camera that
+ * can be access by other programs
+ *
+ * PLEASE, modify only if you understant what you are doing !
+ *
+ * This is mainly C code, but as it links to a CPP librairy we have to compile
+ * it with a C++ compiler. Usual restrictions apply (cast your pointers !)
+ *
+ * The approach taken coding this interface is to implement this as an
+ * object: the hard-coded settings are stored as globals.
+ * This is good for building interfaces to object oriented languages like
+ * python or C++.
+ * All the pointers sent to this librairy should allready have memory assigned
+ * to them. The idea is to have the memory management implemented in a higher
+ * level language and not fight with memory related bugs.
+ *****************************************************************************/
+
+#include "stdafx.h"
+
+#include <stdio.h>
+#include   <stdlib.h>
+#include   "master.h"
+#include   "pvcam.h"
+
+#define PIXIS_API extern "C" __declspec(dllexport)
+
+#define CCD_SIZEX	  1024
+#define CCD_SIZEY	  1024
+#define HUNDRED_KHZ 0
+#define TWO_MHZ	  1
+
+#define DEBUG		  TRUE
+
+/* Error Code definitions */
+#define   PY_SEQ_NOT_INITIALIZED    -401
+#define   PY_TIME_OUT               -100
+#define   PY_NOT_READY              -1
+#define   PY_READOUT_FAILED         -4
+#define   PY_BUFFER_ERROR           -10
+
+/* A macro wrapper to catch and display errors. */
+/* WATCH and learn, boys and girls, this is how you do kick-ass error reporting, you 
+ * should do that all the time. */
+#define   CATCH_ERRORS(function_call)                                                   \
+    do {                                                                                \
+    error = 0 ;                                                                         \
+    error = function_call ;                                                             \
+    if (!error) {                                                                       \
+        printf("Error on " #function_call "\non file %s, line %d, in function %s \n function returned %i\n", \
+               __FILE__, __LINE__, __FUNCTION__,error) ;     \
+        pl_error_message(pl_error_code(),msg);                                          \
+        printf("%s\n", msg);                                                            \
+        return error ;                                                                  \
+    } } while(0)
+
+
+/****** Camera global variables ****************/
+uns32 camera_shutter_mode = OPEN_PRE_TRIGGER ; // was PRE_SEQUENCE
+uns32 camera_antibloom = ANTIBLOOM_INACTIVE ; //int16
+/* It seems the pixis doesn't allow to control that : */
+// int16 camera_clear_mode = CLEAR_PRE_POST_SEQUENCE ; 
+/* Parallel clocking mode, set to Kinetics, see page 61 of manual */
+int16 camera_pmode = PMODE_KINETICS ;   
+/* Units for exposure time.  Seep.90 of PVCAM manual. */
+uns16 exposure_resolution = EXP_RES_ONE_MICROSEC ;
+
+/* Handle to the camera */
+int16 camera_handle ;  
+/* Defines the region of the CCD array we are interested in */
+rgn_type camera_region = { 0, CCD_SIZEX - 1, 1, 0, CCD_SIZEY - 1, 1 };
+char camera_name[CAM_NAME_LEN]; 
+/* A buffer to hold error messages */
+char msg[ERROR_MSG_LEN];
+/* The error number. This is an global to be able to use the error catching macro */
+int error ;
+
+
+PIXIS_API int acquire( int py_exposure_time, int py_num_img_in_seq, 
+                        int binning_X, int binning_Y, int py_gain, int py_kin_win_size,
+                        int py_ADC_speed, int py_row_shift_time,
+                        int *return_buffer, int len)
+{
+    /* Pointer to a buffer to hold the image. */
+    uns16 *image_buffer = NULL;
+    uns32 buffer_size;
+    /************ Start the sequence ******************/
+    uns32 exposure_time ;	 /* exposure time in microsec. */
+    uns16 num_img_in_seq ;	 /* num. images in image sequence */
+    int16 gain ;				 /* ADC gain */
+    uns16 kin_win_size ;	 /* kinetics mode window size */
+	 int16 adc_speed ;		 /* ADC readout rate: 0-> 100kHz, 1 -> 2MHz */
+	 uns32 par_shift_time ;	 /* Vertical clock speed (row shifting speed).  3200 ns - 30200 ns */
+	 
+	 rs_bool yes = 1 ;		 /* Generic boolean. Use to enable "CUSTOM_TIMING" for kinetic mode */
+	 uns32 edge_trigger = EDGE_TRIG_POS ;	  /* trigger on rising edge */
+	 rs_bool one ;
+	 uns16 misc_u16 ;
+	 uns32 misc_u32 ;
+	 int16 misc_i16 ;
+	 uns32 logic_out = OUTPUT_SHUTTER ;
+	 int16 clear_cycles ;
+	 uns32 clear_mode = CLEAR_NEVER ;
+
+	 if (DEBUG) { printf("\nCalling capture\n") ; }
+
+    /* We have to convert the arguments passed by python */
+    exposure_time = (uns32) py_exposure_time ;
+    num_img_in_seq = (int16) py_num_img_in_seq ;
+    gain = (uns16) py_gain ;
+    kin_win_size = (uns16) py_kin_win_size ;
+	 adc_speed = (uns16) py_ADC_speed ;
+	 par_shift_time = (uns32) py_row_shift_time ;
+    
+	 /* ************** Hardware configuration *************************
+	 Manually set PIXIS hardware settings related to exposure time,
+	 exposure mode, vertical clock speed (a.k.a. row shifting speed),
+	 ADD readout speed, and ADC gain.
+	 **************************************************************** */
+	 
+    /* For the definition of camera_region, see p68 of the manual */
+	 camera_region.pbin = (uns16) binning_Y ; // was X
+    camera_region.sbin = (uns16) binning_X ; // was Y
+    
+	 /* Init a sequence set the region, exposure mode and exposure time */
+    CATCH_ERRORS(pl_exp_init_seq());
+	 
+	 /************* Exposure time units --> MICROSECONDS *****/
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_EXP_RES_INDEX,
+                                            (void_ptr) &exposure_resolution ));
+	 /************** Edge trigger state - rising edge ********/
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_EDGE_TRIGGER,
+                                            (void_ptr) &edge_trigger ));
+	 /************* Timing for image capture *****************/
+	 /* Adjust vertical clock speed (kinetics row-shifting time) */
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_CUSTOM_TIMING,
+                                            (void_ptr) &yes ));
+	  /* Kinetics mode, hot hot hot ! */
+    CATCH_ERRORS(pl_set_param( camera_handle, PARAM_PMODE,
+                                            (void_ptr) &camera_pmode ));
+    CATCH_ERRORS(pl_set_param( camera_handle, PARAM_KIN_WIN_SIZE,
+                                            (void_ptr) &kin_win_size ));
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_PAR_SHIFT_TIME,
+                                            (void_ptr) &par_shift_time ));
+	 /* Set speed table index (ADC digitization rate) */
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SPDTAB_INDEX, 
+														  (void_ptr) &adc_speed ));
+	 /* Antiblomming inactive; set gain; shutter mode; CCD clear mode */
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_GAIN_INDEX,
+                                            (void_ptr) &gain ));
+    CATCH_ERRORS(pl_set_param( camera_handle, PARAM_ANTI_BLOOMING,
+                                            (void_ptr) &camera_antibloom ));
+	 /*CATCH_ERRORS(pl_set_param( camera_handle, PARAM_CLEAR_MODE,
+                                            (void_ptr) &clear_mode ));*/
+    CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SHTR_OPEN_MODE,
+                                            (void_ptr) &camera_shutter_mode ));
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_LOGIC_OUTPUT,
+                                            (void_ptr) &logic_out ));
+	 if (DEBUG) {
+		   /* Use to check status before capture */
+		  uns16 exp_index_check ;
+		  rs_bool custom_timing_check ;
+		  uns32 camera_pmode_check ;
+		  uns16 kin_win_size_check ;
+		  uns32 par_shift_time_check ;
+		  uns32 ser_shift_time_check ;
+		  int16 adc_speed_check ;
+		  flt64 readout_time_check ;
+		  int16 gain_check ;
+		  uns32 anti_bloom_check ;
+		  uns32 shutter_mode_check ;
+		  uns16 shtr_close_delay ;
+		  uns16 shtr_open_delay ;
+		  uns32 clear_mode_check ;
+		  rs_bool clear_bool ;
+		  uns32 clear_max ;
+		  uns32 clear_min ;
+
+		  /* Check everybody's status before proceeding with capture */
+		  /*CATCH_ERRORS(pl_get_param( camera_handle, PARAM_EXP_RES_INDEX, ATTR_CURRENT,
+                                            (void_ptr) &exp_index_check ));
+		  printf("Exp. time units index = %i\n", exp_index_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CUSTOM_TIMING, ATTR_CURRENT,
+                                            (void_ptr) &custom_timing_check ));
+		  printf("Custom timing boolean = %i\n", custom_timing_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_PMODE, ATTR_CURRENT,
+                                            (void_ptr) &camera_pmode_check ));
+		  printf( "Camera PMODE index = %i\n", camera_pmode_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_KIN_WIN_SIZE, ATTR_CURRENT,
+                                            (void_ptr) &kin_win_size_check ));
+		  printf( "Kinetics window size = %i\n", kin_win_size_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_PAR_SHIFT_TIME, ATTR_CURRENT,
+                                            (void_ptr) &par_shift_time_check ));
+		  printf( "Parallel shift time = %i ns\n", par_shift_time);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SER_SHIFT_TIME, ATTR_CURRENT,
+                                            (void_ptr) &ser_shift_time_check ));
+		  printf( "Serial shift time = %i ns\n", ser_shift_time_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_PIX_TIME, ATTR_CURRENT,
+                                            (void_ptr) &adc_speed_check ));
+		  printf( "Current ADC speed =  %i ns\n", adc_speed_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_READOUT_TIME, ATTR_CURRENT,
+                                            (void_ptr) &readout_time_check ));
+		  printf( "Readout time = %i ms\n", readout_time_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_GAIN_INDEX, ATTR_CURRENT,
+                                            (void_ptr) &gain_check ));
+		  printf( "Gain index = %i\n", gain_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_ANTI_BLOOMING, ATTR_CURRENT,
+                                            (void_ptr) &anti_bloom_check ));
+		  printf( "Antibloom = %i\n", anti_bloom_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_EDGE_TRIGGER, ATTR_CURRENT,
+                                            (void_ptr) &misc_u32 ));
+		  printf( "Edge trigger state = %i\n", misc_u32);*/
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SHTR_CLOSE_DELAY, ATTR_CURRENT,
+                                            (void_ptr) &shtr_close_delay ));
+		  printf( "Shtr. close delay = %i ms\n", shtr_close_delay);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SHTR_OPEN_DELAY, ATTR_AVAIL,
+                                            (void_ptr) &one ));
+		  printf( "Shtr. open delay avail = %i\n", one);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SHTR_CLOSE_DELAY_UNIT, ATTR_CURRENT,
+                                            (void_ptr) &misc_u32 ));
+		  printf( "Shtr. close delay units = %i\n", misc_u32);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_TEMP, ATTR_CURRENT,
+                                            (void_ptr) &misc_i16 ));
+		  printf( "Current CCD temp = %i\n", misc_i16);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_TEMP_SETPOINT, ATTR_CURRENT,
+                                            (void_ptr) &misc_i16 ));
+		  printf( "Current CCD set.pt. = %i\n", misc_i16);
+		  printf( "Exposure time = %i us\n", exposure_time );
+		  /*CATCH_ERRORS(pl_get_param( camera_handle, PARAM_LOGIC_OUTPUT, ATTR_CURRENT,
+                                            (void_ptr) &logic_out ));
+		  printf( "Logic output index = %i\n", logic_out);*/
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CLEAR_CYCLES, ATTR_CURRENT,
+                                            (void_ptr) &clear_cycles ));
+		  printf( "Clear cycles = %i\n", clear_cycles);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CLEAR_MODE, ATTR_CURRENT,
+                                            (void_ptr) &clear_mode_check ));
+		  printf( "CCD clear mode = %i\n", clear_mode_check);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CLEAR_MODE, ATTR_ACCESS,
+                                            (void_ptr) &misc_u16 ));
+		  printf( "clear mode access = %i\n", misc_u16);
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CLEAR_MODE, ATTR_MAX,
+                                            (void_ptr) &clear_max ));
+		  printf( "CCD clear mode max = %.3i\n", clear_max);//Force precision of 3, add leading zeros if necessary.
+		  CATCH_ERRORS(pl_get_param( camera_handle, PARAM_CLEAR_MODE, ATTR_MIN,
+                                            (void_ptr) &clear_min ));
+		  printf( "CCD clear mode min = %i\n", clear_min);
+	 }
+	 
+    /* Setup the sequence. STROBED_MODE set to camera to wait for a
+     * trigger to acquire each image of the sequence. See page 20 of the
+     * manual. */
+    CATCH_ERRORS(pl_exp_setup_seq( camera_handle, num_img_in_seq, 
+                    1, &camera_region, STROBED_MODE, exposure_time, &buffer_size ));
+
+    /* allocate memory for image buffer */
+	 image_buffer = (uns16*)malloc( buffer_size );
+
+    /* Start the acquisition */
+    CATCH_ERRORS(pl_exp_start_seq(camera_handle, image_buffer ));
+    /************ Check the status ********************/
+    int16 status;
+    uns32 not_needed;
+    if (DEBUG) { printf("Acquiring and reading out...\n") ; }
+    /* Query the status of the camera */
+    while( pl_exp_check_status( camera_handle, &status, &not_needed ) &&
+	                    (status != READOUT_COMPLETE && status != READOUT_FAILED) );
+    //CATCH_ERRORS(pl_exp_check_status( camera_handle, &status, &not_needed)) ; 
+    if ( status == READOUT_FAILED) {
+	    printf( "Data collection error: %i\n", pl_error_code() );
+        return PY_READOUT_FAILED ; 
+    }
+    /************ Retrive the imqges ******************/
+    if (DEBUG) { printf("Retriving the images\n") ; }
+    if (len*sizeof(uns16) != buffer_size) {
+        printf("The array passed does not have the right size\n") ;
+        return PY_BUFFER_ERROR ;
+    }
+    /* image_buffer now contains valid data */
+    if (DEBUG) { printf( "Center Three Points: %i, %i, %i\n",
+	    image_buffer[buffer_size/sizeof(uns16)/2 - 1],
+	    image_buffer[buffer_size/sizeof(uns16)/2],
+	    image_buffer[buffer_size/sizeof(uns16)/2 + 1] ); } ;
+
+    /* Transfer the internal buffer to the python array */
+    if (DEBUG) { printf("OK, gritt your theeth: load image into python array\n") ; };
+    for (int i=0; i < len; i++) {
+        return_buffer[i] = (int) image_buffer[i] ;
+    }
+    /* Finish the sequence */
+    CATCH_ERRORS(pl_exp_finish_seq( camera_handle, image_buffer, 0));
+    /* Uninit the sequence */
+    CATCH_ERRORS(pl_exp_uninit_seq());
+    free( image_buffer );
+    image_buffer = NULL ;
+    return TRUE ;
+}
+
+
+PIXIS_API int get_buffer_size( int py_num_img_in_seq, int binning_X, int binning_Y,
+                        int *size)
+{
+    /* The extra argument "size" is there to be able to return the size of the buffer 
+     * required, thus python can build the right matrix to pass to retrive_image() */
+    uns32 buffer_size ;
+    uns32 exposure_time = 1 ;
+    uns16 num_img_in_seq ;
+	 //uns32 shutter_open_never = OPEN_NEVER ; /* No need to open shutter just to check buffer size */
+	 uns32 gb_shutter_mode = OPEN_PRE_TRIGGER ;	/* This works in TIMED exposure mode */
+	 int16 temp_adc_speed = 1 ;  /* 2MHz */
+	 int16 curr_adc_speed ;		  /* current ADC speed */
+
+    if (DEBUG) { printf("Calling get_buffer_size\n") ; }
+    /* We have to convert the arguments passed by python */
+    num_img_in_seq = (uns16) py_num_img_in_seq ;
+    /* For the definition of camera_region, see p68 of the manual */
+    camera_region.pbin = (uns16) binning_X ;
+    camera_region.sbin = (uns16) binning_Y ;
+    /* Init a sequence set the region, exposure mode and exposure time */
+    CATCH_ERRORS(pl_exp_init_seq());
+    /* Setup the sequence. STROBED_MODE set to camera to wait for a
+     * trigger to acquire each image of the sequence. See page 17 of the
+     * manual. */
+    CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SHTR_OPEN_MODE, 
+                                            (void_ptr) &gb_shutter_mode ));
+	 /* Set ADC speed to 2MHz for quick acquisition of buffer size. */
+	 CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SPDTAB_INDEX, ATTR_CURRENT,
+                                            (void_ptr) &curr_adc_speed ));
+	 //printf("Curr. ADC speed = %i\n", curr_adc_speed) ;
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SPDTAB_INDEX, 
+														  (void_ptr) &temp_adc_speed ));
+	 //printf("temp. ADC speed = %i\n", temp_adc_speed) ;
+	 /* Use TIMED_MODE to get buffer size without having to wait for an external trigger */														  
+    CATCH_ERRORS(pl_exp_setup_seq( camera_handle, num_img_in_seq, 
+                    1, &camera_region, TIMED_MODE, exposure_time, &buffer_size ));
+    /* Pass back the size of the buffer to python */
+    CATCH_ERRORS(pl_exp_uninit_seq());
+    *size = (int) buffer_size/sizeof(uns16) ;
+	 /* Reset ADC speed to prev. value */
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SPDTAB_INDEX, 
+														  (void_ptr) &curr_adc_speed ));
+	 //printf("Curr. ADC speed = %i\n", curr_adc_speed) ;
+    return TRUE ;
+}
+
+int run_sequence_private( int16 hCam, uns32 exposure_time, rgn_type region, uns16 num_img_in_seq, int16 shutter_mode, int trigger )
+{
+    uns32 size;
+    uns16 *frame;
+    int16 status;
+    uns32 not_needed;
+	 int16 temp_adc_speed = 1 ;  /* 2MHz */
+	 int16 curr_adc_speed ;		  /* current ADC speed */
+    /* Init a sequence set the region, exposure mode and exposure time */
+    CATCH_ERRORS(pl_exp_init_seq());
+    /* Set the camera back to normal mode (non Kinetic) */
+    /* FIXME: I cannot get the camera mode back to normal, it keeps replying :
+     * Parameter is not available for camera */
+    //int16 camera_normal_pmode = PMODE_NORMAL ;
+    //CATCH_ERRORS(pl_set_param( camera_handle, PARAM_PMODE,
+    //                                        (void_ptr) &camera_normal_pmode ));
+    /* Setup the sequence. STROBED_MODE set to camera to wait for a
+     * trigger to acquire each image of the sequence. See page 20 of the
+     * manual. */
+    CATCH_ERRORS(pl_set_param( hCam, PARAM_SHTR_OPEN_MODE, (void_ptr) &shutter_mode ));
+	 /* Set ADC speed to 2MHz for quick acquisition of buffer size. */
+	 CATCH_ERRORS(pl_get_param( camera_handle, PARAM_SPDTAB_INDEX, ATTR_CURRENT,
+                                            (void_ptr) &curr_adc_speed ));
+	 //printf("Curr. ADC speed = %i\n", curr_adc_speed) ;
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SPDTAB_INDEX, 
+														  (void_ptr) &temp_adc_speed ));
+	 //printf("temp. ADC speed = %i\n", temp_adc_speed) ;
+	 
+    if (trigger==1) {	/* For 'triggered_open' and 'triggered_close' shutter functions */
+        printf("Waiting for trigger\n");
+        CATCH_ERRORS(pl_exp_setup_seq( hCam, num_img_in_seq, 1, &region, 
+                        STROBED_MODE, exposure_time, &size ));
+    }
+    else {					/* For plain (untriggered) 'open' and 'close' shutter functions */
+        CATCH_ERRORS(pl_exp_setup_seq( hCam, num_img_in_seq, 1, &region, 
+                        TIMED_MODE, exposure_time, &size ));
+    }
+    frame = (uns16*)malloc( size );
+    /* Start the acquisition */
+    CATCH_ERRORS(pl_exp_start_seq(hCam, frame));
+    /* wait for data or error */
+    while( pl_exp_check_status( hCam, &status, &not_needed ) &&
+	                    (status != READOUT_COMPLETE && status != READOUT_FAILED) );
+    /* Check Error Codes */
+    if( status == READOUT_FAILED ) {
+        printf( "Data collection error: %i\n", pl_error_code() );
+        return FALSE ;
+    }
+    /* frame now contains valid data */
+    if (DEBUG) {
+        printf( "Center Three Points: %i, %i, %i\n",
+                        frame[size/sizeof(uns16)/2 - 1],
+                        frame[size/sizeof(uns16)/2],
+                        frame[size/sizeof(uns16)/2 + 1] );
+    }
+
+    /* Finish the sequence */
+    CATCH_ERRORS(pl_exp_finish_seq( hCam, frame, 0));
+    /* Uninit the sequence */
+    CATCH_ERRORS(pl_exp_uninit_seq());
+    free( frame );
+	 /* Reset ADC speed to prev. value */
+	 CATCH_ERRORS(pl_set_param( camera_handle, PARAM_SPDTAB_INDEX, 
+														  (void_ptr) &curr_adc_speed ));
+	 //printf("Curr. ADC speed = %i\n", curr_adc_speed) ;
+    return TRUE ;
+}
+
+PIXIS_API int triggered_open_shutter()
+{
+    /* Opens the shutter at the first trigger */
+    return run_sequence_private( camera_handle, 1, camera_region, 1, 
+                OPEN_PRE_SEQUENCE, 1);
+}
+
+PIXIS_API int triggered_close_shutter()
+{
+    /* Closes the shutter at the first trigger */
+    return run_sequence_private(camera_handle, 1, camera_region, 1, 
+                OPEN_NEVER, 1);
+}
+
+PIXIS_API int open_shutter()
+{
+    /* Opens the shutter right away */
+    if (DEBUG) { printf("Opening the shutter\n") ; };
+    return run_sequence_private( camera_handle, 1, camera_region, 1, 
+                OPEN_PRE_SEQUENCE, 0);
+}
+
+PIXIS_API int close_shutter()
+{
+    /* Closes the shutter right away */
+    if (DEBUG) { printf("Closing the shutter\n") ; };
+    return run_sequence_private(camera_handle, 1, camera_region, 1, 
+                OPEN_NEVER, 0);
+}
+
+PIXIS_API int open()
+{
+    /* Initialize the PVCam Library and Open the First Camera */
+    CATCH_ERRORS(pl_pvcam_init());
+    CATCH_ERRORS(pl_cam_get_name( 0, camera_name ));
+    if (DEBUG) { printf("Opening the camera\n") ; };
+    if (DEBUG) { printf("Camera name: %s\n", camera_name); } 
+    CATCH_ERRORS(pl_cam_open( camera_name, &camera_handle, OPEN_EXCLUSIVE ));
+    return TRUE ;
+}
+
+PIXIS_API int close()
+{
+    if (DEBUG) { printf("Closing the camera\n") ; };
+    CATCH_ERRORS(pl_cam_close( camera_handle ));
+    CATCH_ERRORS(error = pl_pvcam_uninit());
+    return TRUE ;
+}

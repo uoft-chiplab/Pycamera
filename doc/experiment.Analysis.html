@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class experiment.Analysis</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="experiment.html">experiment</a>.</span><a href="experiment.Analysis.html">Analysis</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>A class that processes the data in a separate thread and displays
+the results. This class automatically spawns a new analysis thread
+(calling its method &quot;do_analysis&quot;) when its attribute current_data
+is changed.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+<li><a href="#section-functions">Methods</a></li>
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="analysis_thread">analysis_thread<div class="document">
+<p>Thread object that is going to be run to do the analysis.</p>
+</div>
+<pre>analysis_thread = Instance(Thread)
+
+</pre></li>
+
+  <li class="attribute" id="camera">camera<div class="document">
+<p>A pointer to the object where the camera parameters are stored.</p>
+</div>
+<pre>camera = Instance(<a href="mock_camera.PixisCamera.html">Camera</a>)
+
+</pre></li>
+
+  <li class="attribute" id="current_data">current_data<div class="document">
+<p>This is where you put the images to be processed. For the time being this
+should be a dictionnary of 2D arrays</p>
+</div>
+<pre>current_data = Any
+
+</pre></li>
+
+  <li class="attribute" id="displayed_text">displayed_text<div class="document">
+<p>The text displayed on screen.</p>
+</div>
+<pre>displayed_text = String(desc = 'the results of the analysis')
+
+</pre></li>
+
+  <li class="attribute" id="experiment">experiment<div class="document">
+<p>A pointer to the object where the experimental parameters are stored.</p>
+</div>
+<pre>experiment = Instance(<a href="experiment.Experiment.html">Experiment</a>)
+
+</pre></li>
+
+  <li class="attribute" id="file_name">file_name<div class="document">
+<p>The file to which save the data.</p>
+</div>
+<pre>file_name = File(desc = 'the file that the data should be saved to.')
+
+</pre></li>
+
+  <li class="attribute" id="plot_window">plot_window<div class="document">
+<p>A pointer to MPLWidget to do some plotting.</p>
+</div>
+<pre>plot_window = Instance(<a href="mplwidget.MPLWidget.html">MPLWidget</a>)
+
+</pre></li>
+
+  <li class="attribute" id="save_files">save_files<div class="document">
+</div>
+<pre>save_files = false(desc = 'if the images are going to be saved to files', label = 'Save images')
+
+</pre></li>
+
+  <li class="attribute" id="save_history">save_history<div class="document">
+<p>Event that triggers the save history. This is represented as a button.</p>
+</div>
+<pre>save_history = Event
+
+</pre></li>
+
+  <li class="attribute" id="shot_number">shot_number<div class="document">
+<p>The index of the run in the sequence. It is incremented at each run, and
+is put to zero when the data is saved.</p>
+</div>
+<pre>shot_number = Int(-Const(1))
+
+</pre></li>
+
+  <li class="attribute" id="stored_data">stored_data<div class="document">
+<p>Stored_data: use this as a dictionary of arrays to store results from
+analysis for each run.</p>
+</div>
+<pre>stored_data = Any
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+<p>The view attribute, used by traitsUI to create a representation.</p>
+</div>
+<pre>view = View(Item('displayed_text', show_label = False, springy = True, style = 'custom', editor = TextEditor()), Group(Item('save_files'), spring, Item('save_history', editor = ButtonEditor(), show_label = False), orientation = 'horizontal'), Item('file_name', show_label = False, springy = True))
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+<h2 id="section-functions">Method summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#display_line">display_line</a>(self, string)</li>
+  
+  <li class="function"><a href="#do_analysis">do_analysis</a>(self)</li>
+  
+</ul>
+
+
+
+
+<h2>Methods</h2>
+<ul class="doclist">
+  
+  <li id="display_line" class="function">display_line(self, string)<div class="document">
+<p>Thread safe display event, this adds a line to the displayed text
+in a thread safe way. Always call this function: do not modify
+the displayed sting yourself.</p>
+</div>
+</li>
+  
+  <li id="do_analysis" class="function">do_analysis(self)<div class="document">
+<p>This is the function that is called to do the analysis. It should
+perform the analysis using the parameters stored in the camera and
+experiment objects, and the experimental results, stored in the
+current_data attribute of this object.</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

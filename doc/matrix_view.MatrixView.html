@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class matrix_view.MatrixView</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="matrix_view.html">matrix_view</a>.</span><a href="matrix_view.MatrixView.html">MatrixView</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>A MatPlotLib Widget displaying a pseudo color view of a
+2D numpy array.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+<li><a href="#section-functions">Methods</a></li>
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="autoscale_colormap">autoscale_colormap<div class="document">
+<p>Bolean that decides whether the colormap should be autoscaled or not.</p>
+</div>
+<pre>autoscale_colormap = true(label = 'Autoscale', desc = 'if the colormap is autoscaled')
+
+</pre></li>
+
+  <li class="attribute" id="data">data<div class="document">
+<p>A dictionary of 2D arrays to be plotted.</p>
+</div>
+<pre>data = Dict
+
+</pre></li>
+
+  <li class="attribute" id="rescale">rescale<div class="document">
+<p>Event that is represented as a button.</p>
+</div>
+<pre>rescale = Event(label = 'Rescale')
+
+</pre></li>
+
+  <li class="attribute" id="selected_image">selected_image<div class="document">
+</div>
+<pre>selected_image = Str('image1', desc = 'the image shown on the screen', label = 'Display')
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+</div>
+<pre>view = View(Group(Item('selected_image', editor = EnumEditor(name = '_image_list'), show_label = False), 'autoscale_colormap', Item('rescale', editor = ButtonEditor(), show_label = False, width = -Const(55)), orientation = 'horizontal'))
+
+</pre></li>
+
+  <li class="attribute" id="z_max">z_max<div class="document">
+<p>The max for the colormap</p>
+</div>
+<pre>z_max = Any
+
+</pre></li>
+
+  <li class="attribute" id="z_min">z_min<div class="document">
+<p>The min for the colormap</p>
+</div>
+<pre>z_min = Any
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+<h2 id="section-functions">Method summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#__init__">__init__</a>(self, parent)</li>
+  
+  <li class="function"><a href="#do_rescale_colormap">do_rescale_colormap</a>(self)</li>
+  
+  <li class="function"><a href="#mouse_button_callback">mouse_button_callback</a>(self, event)</li>
+  
+  <li class="function"><a href="#update">update</a>(self)</li>
+  
+  <li class="function"><a href="#update_list">update_list</a>(self)</li>
+  
+</ul>
+
+
+
+
+<h2>Methods</h2>
+<ul class="doclist">
+  
+  <li id="__init__" class="function">__init__(self, parent)<div class="document">
+</div>
+</li>
+  
+  <li id="do_rescale_colormap" class="function">do_rescale_colormap(self)<div class="document">
+<p>Forces a rescale of the colormap.</p>
+</div>
+</li>
+  
+  <li id="mouse_button_callback" class="function">mouse_button_callback(self, event)<div class="document">
+<p>Fired by mpl when there is a mouse click on the canvas.</p>
+</div>
+</li>
+  
+  <li id="update" class="function">update(self)<div class="document">
+<p>Updates the display in a clean way (event-loop friendly)</p>
+</div>
+</li>
+  
+  <li id="update_list" class="function">update_list(self)<div class="document">
+<p>Does the update. Must be called from the event-loop !</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

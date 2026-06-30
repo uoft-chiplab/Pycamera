@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class experiment.Experiment</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="experiment.html">experiment</a>.</span><a href="experiment.Experiment.html">Experiment</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>A class with all the different experimental parameters. This class
+serves as a representation to the experiment.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="atoms">atoms<div class="document">
+</div>
+<pre>atoms = Enum('Rb', 'K', desc = 'the specie probed', label = 'Specie')
+
+</pre></li>
+
+  <li class="attribute" id="detuning">detuning<div class="document">
+</div>
+<pre>detuning = CFloat(0, desc = 'detuning of the probe laser to the atomic transition, in Mhz', label = 'Detuning')
+
+</pre></li>
+
+  <li class="attribute" id="tof">tof<div class="document">
+</div>
+<pre>tof = CFloat(10, desc = 'time of flight, in ms', label = 'TOF')
+
+</pre></li>
+
+  <li class="attribute" id="trap_freq_ax">trap_freq_ax<div class="document">
+</div>
+<pre>trap_freq_ax = CFloat(100, desc = 'the trap frequency in the axial direction, in kHz', label = 'Axial')
+
+</pre></li>
+
+  <li class="attribute" id="trap_freq_long">trap_freq_long<div class="document">
+</div>
+<pre>trap_freq_long = CFloat(100, desc = 'the trap frequency in the longitudinal direction, in kHz', label = 'Longitudinal')
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+<p>The view attribute, used by traitsUI to create a representation.</p>
+</div>
+<pre>view = View(Group(Group(Item('atoms', show_label = False), spring, Item('detuning', width = -Const(70)), Item('tof', width = -Const(70)), orientation = 'horizontal'), Group(Item('trap_freq_long', width = -Const(70)), spring, Item('trap_freq_ax', width = -Const(70)), orientation = 'horizontal', label = 'Trap frequencies', show_border = True)))
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+

@@ -1,0 +1,111 @@
+Traceback (most recent call last):
+  File "/usr/lib/python2.4/site-packages/wx-2.6-gtk2-unicode/wx/_core.py", line 13262, in <lambda>
+    lambda event: event.callable(*event.args, **event.kw) )
+  File "/usr/lib/python2.4/site-packages/wx-2.6-gtk2-unicode/wx/stc.py", line 4499, in ScrollToLine
+    return _stc.StyledTextCtrl_ScrollToLine(*args, **kwargs)
+TypeError: argument number 1: a 'wxStyledTextCtrl *' is expected, '_wxPyDeadObject(wxPython wrapper for DELETED PyShell object! (The C++ object no longer exists.))' is received
+called
+called
+called
+called
+called
+called
+called
+called
+Thread toggle called
+Exception occurred in traits notification handler.
+Please check the log file for details.
+Exception occurred in traits notification handler for object: <__main__.ThreadRunner object at 0xb5c8c0bc>, trait: foo, old value: <undefined>, new value: 0
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.4/site-packages/enthought/traits/trait_notifiers.py", line 294, in call_1
+    self.handler( object )
+  File "test_thread.py", line 66, in _foo_fired
+    self.job_start()
+AttributeError: 'ThreadRunner' object has no attribute 'job_start'
+Thread toggle called
+Exception occurred in traits notification handler for object: <__main__.ThreadRunner object at 0xb5c8c0bc>, trait: foo, old value: <undefined>, new value: 0
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.4/site-packages/enthought/traits/trait_notifiers.py", line 294, in call_1
+    self.handler( object )
+  File "test_thread.py", line 66, in _foo_fired
+    self.job_start()
+AttributeError: 'ThreadRunner' object has no attribute 'job_start'
+Thread toggle called
+Exception occurred in traits notification handler for object: <__main__.ThreadRunner object at 0xb5c8c0bc>, trait: foo, old value: <undefined>, new value: 0
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.4/site-packages/enthought/traits/trait_notifiers.py", line 294, in call_1
+    self.handler( object )
+  File "test_thread.py", line 66, in _foo_fired
+    self.job_start()
+AttributeError: 'ThreadRunner' object has no attribute 'job_start'
+Thread toggle called
+Exception occurred in traits notification handler for object: <__main__.ThreadRunner object at 0xb5c8c0bc>, trait: foo, old value: <undefined>, new value: 0
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.4/site-packages/enthought/traits/trait_notifiers.py", line 294, in call_1
+    self.handler( object )
+  File "test_thread.py", line 66, in _foo_fired
+    self.job_start()
+AttributeError: 'ThreadRunner' object has no attribute 'job_start'
+Thread toggle called
+Exception occurred in traits notification handler for object: <__main__.ThreadRunner object at 0xb5c8c0bc>, trait: foo, old value: <undefined>, new value: 0
+Traceback (most recent call last):
+  File "/usr/local/lib/python2.4/site-packages/enthought/traits/trait_notifiers.py", line 294, in call_1
+    self.handler( object )
+  File "test_thread.py", line 66, in _foo_fired
+    self.job_start()
+AttributeError: 'ThreadRunner' object has no attribute 'job_start'
+Thread toggle called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Thread toggle called
+Trying to start job
+Thread toggle called
+Thread toggle called
+Thread toggle called
+Thread toggle called
+Thread toggle called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Called
+Thread toggle called
+Trying to start job
+Thread toggle called
+Thread toggle called
+Trying to start job
+Thread toggle called
+Thread toggle called
+Trying to start job
+Thread toggle called

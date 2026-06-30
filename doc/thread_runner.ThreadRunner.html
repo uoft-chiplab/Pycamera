@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html
+          PUBLIC
+          "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Class thread_runner.ThreadRunner</title>
+    <link rel="stylesheet" type="text/css" href="class.css"/>
+    <script type="text/javascript" src="scr.js"></script>
+    
+  </head>
+  <body>
+    
+    
+    <div id="header">
+
+    <div id="nav-bar">
+    <ul>
+    <li><a href="index.html">Module Index</a></li>
+    <li><a href="class_hierarchy.html">Class Hierarchy</a></li>
+    <li><a href="class_index.html">Class Index</a></li>
+    <li><a href="namespace_index.html">Namespace Index</a></li>
+    </ul>
+    </div>
+    <h1>Class <span class="prefix"><a href="thread_runner.html">thread_runner</a>.</span><a href="thread_runner.ThreadRunner.html">ThreadRunner</a></h1>
+    
+    </div>
+
+    
+
+<div class="document">
+<p>ThreadRunner(job=None)</p>
+<p>Class that run a job in a separate thread and provides a graphical
+representation to start or stop it.</p>
+</div>
+
+
+
+
+
+<div id="contents">
+<ul>
+Contents:
+
+
+<li><a href="#section-variables">Attributes</a></li>
+
+
+
+
+<li><a href="#section-functions">Methods</a></li>
+
+</ul>
+</div>
+
+
+<div id="main">
+
+
+
+
+<h2 id="section-variables">Attributes</h2>
+<ul class="doclist">
+
+  <li class="attribute" id="button_abort_label">button_abort_label<div class="document">
+</div>
+<pre>button_abort_label = Str('Abort')
+
+</pre></li>
+
+  <li class="attribute" id="button_go_label">button_go_label<div class="document">
+</div>
+<pre>button_go_label = Str('Start')
+
+</pre></li>
+
+  <li class="attribute" id="job">job<div class="document">
+<p>job(thread): callable that is executed by the thread, to be set
+at run time, or at initialisation. It should accept one
+argument: thread object in which it will live. To be able
+to abort in the middle of the job, it should return when
+thread.wants_abort is true.</p>
+</div>
+<pre>job = Callable(allow_none = False)
+
+</pre></li>
+
+  <li class="attribute" id="thread">thread<div class="document">
+</div>
+<pre>thread = Instance(Thread)
+
+</pre></li>
+
+  <li class="attribute" id="toggle">toggle<div class="document">
+<p>event that stops the thread if running, and vice versa.</p>
+</div>
+<pre>toggle = Event(desc = 'start/abort the job')
+
+</pre></li>
+
+  <li class="attribute" id="view">view<div class="document">
+</div>
+<pre>view = View(Group(Item('toggle', show_label = False, editor = ButtonEditor(), width = -Const(45)), Item('_status', show_label = False, style = 'readonly', width = 25), orientation = 'horizontal'))
+
+</pre></li>
+
+</ul>
+
+
+
+
+
+
+
+
+
+<h2 id="section-functions">Method summary</h2>
+<ul class="function-summary">
+  
+  <li class="function"><a href="#__running_changed">__running_changed</a>(self, new_running)</li>
+  
+  <li class="function"><a href="#abort">abort</a>(self)</li>
+  
+  <li class="function"><a href="#start">start</a>(self)</li>
+  
+</ul>
+
+
+
+
+<h2>Methods</h2>
+<ul class="doclist">
+  
+  <li id="__running_changed" class="function">__running_changed(self, new_running)<div class="document">
+</div>
+</li>
+  
+  <li id="abort" class="function">abort(self)<div class="document">
+<p>Call to abort the thread if running.</p>
+</div>
+</li>
+  
+  <li id="start" class="function">start(self)<div class="document">
+<p>Call to start the thread if not running.</p>
+</div>
+</li>
+  
+</ul>
+
+
+
+
+</div>  <!-- #main -->
+
+
+    
+    
+  </body>
+</html>
+
