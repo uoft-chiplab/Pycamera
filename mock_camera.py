@@ -6,8 +6,14 @@
 import os
 os.environ['NUMERIX']='numpy'
 
-from numpy import * 
+from numpy import *
+from scipy import io, interpolate
 from data_analysis2 import gaussian2D
+
+# Default polylog table (next to this module), used to render a synthetic
+# degenerate-Fermi-gas cloud so the fermi fit can be exercised without hardware.
+POLYLOG_TABLE_DEFAULT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     'polylog_table.mat')
 
 # To have Traits understand numpy
 import os
@@ -112,6 +118,53 @@ class PixisCamera( HasTraits ):
     
     # Size of the Pixis data buffer.  Updated by method 'get_buffer_size()'
     buffer_size = CInt
+
+    # --- Synthetic cloud selection (dev/testing only) -----------------------
+    # 'gaussian' reproduces the original thermal test cloud; 'fermi' renders a
+    # degenerate Fermi gas whose 2D column density is Li_2(-e^u), so its ROI
+    # sum matches the Li_{5/2} model fitted by the fermi analysis path.
+    cloud_type = Enum("gaussian", "fermi", label="Mock cloud",
+            desc="shape of the synthetic O.D. cloud produced by acquire()")
+
+    fermi_q = CFloat(3.0, label="Mock q",
+            desc="log-fugacity of the synthetic Fermi cloud (higher = colder)")
+
+    polylog_table_file = File(POLYLOG_TABLE_DEFAULT, label="Polylog table",
+            desc="lookup table used to render the synthetic Fermi cloud")
+
+    # Cached Li_2 interpolator + status, built lazily by _load_fermi_table().
+    _fermi_Li2 = None
+    _fermi_ok = False
+    _fermi_loaded_path = None
+
+    def _load_fermi_table(self):
+        """ Lazily load/validate the Li_2 column of the polylog table for the
+            synthetic Fermi cloud.  Returns True on success, else prints a
+            message and returns False (acquire() falls back to the gaussian).
+        """
+        path = self.polylog_table_file
+        if self._fermi_ok and (path == self._fermi_loaded_path):
+            return True
+        self._fermi_ok = False
+        self._fermi_loaded_path = path
+        if (not path) or (not os.path.exists(path)):
+            print "**** mock Fermi cloud: polylog table not found: %s ****" % path
+            return False
+        try:
+            tbl = io.loadmat(path)
+            u = tbl['u'].ravel()
+            Li2 = tbl['Li2'].ravel()
+        except Exception, inst:
+            print "**** mock Fermi cloud: couldn't load table ****"
+            print inst
+            return False
+        if (u.shape[0] < 2) or (Li2.shape[0] != u.shape[0]):
+            print "**** mock Fermi cloud: bad table arrays ****"
+            return False
+        self._fermi_Li2 = interpolate.interp1d(u, Li2, bounds_error=False,
+                                               fill_value=0.0)
+        self._fermi_ok = True
+        return True
     
     view = View(Group(
             Group(  Item('exposure', width=-100), 
@@ -130,6 +183,12 @@ class PixisCamera( HasTraits ):
                         ),
                     visible_when='_kin_visible',
                     show_border=True, label="Kinetics"),
+            Group(  Item('cloud_type', width=-100),
+                    Item('fermi_q', width=-60,
+                        visible_when="cloud_type == 'fermi'"),
+                    Item('polylog_table_file', width=-200,
+                        visible_when="cloud_type == 'fermi'"),
+                    show_border=True, label="Mock cloud"),
             orientation='vertical'),
             )
  
@@ -172,10 +231,24 @@ class PixisCamera( HasTraits ):
         # 'data' now has 'Y_size' rows and 'buffer_size/Y_size' columns.
         [Y,X] = indices(data.shape)
         # Fake optical density data.
-        data = ( gaussian2D(X, Y, array([1, 625, 36, data.shape[1]/1.5,
-                data.shape[0]/6, 0.1])) 
+        if self.cloud_type == 'fermi' and self._load_fermi_table():
+            # Physically-exact degenerate-Fermi-gas 2D column density:
+            #   n_col(x,y) ~ Li_2(-e^{q - (x-x0)^2/2sx^2 - (y-y0)^2/2sy^2})
+            # normalized to unit peak.  Its sum over one axis is the Li_{5/2}
+            # profile the fermi fit expects.
+            q = self.fermi_q
+            x0 = data.shape[1]/1.5
+            y0 = data.shape[0]/6.0
+            u = q - ((X - x0)**2/(2*625.0) + (Y - y0)**2/(2*36.0))
+            col = self._fermi_Li2(u) / float(self._fermi_Li2(q))
+            data = ( col
                 + 0.2*( random.rand(self.buffer_size).reshape((Y_size,-1)) - 0.5 )
                 )
+        else:
+            data = ( gaussian2D(X, Y, array([1, 625, 36, data.shape[1]/1.5,
+                    data.shape[0]/6, 0.1]))
+                    + 0.2*( random.rand(self.buffer_size).reshape((Y_size,-1)) - 0.5 )
+                    )
         #print ("data.shape[0]", data.shape[0])  # num. rows
         #print ("data.shape[1]", data.shape[1])  # num. columns
         #print "y centre = %d" % int(data.shape[0])/4

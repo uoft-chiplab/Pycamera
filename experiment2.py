@@ -36,11 +36,17 @@ from time import localtime
 # Import analysis functions from data_analysis.py
 from data_analysis2 import gaussian1D, dic_to_string, fit_prep,\
         crunch_params, gfit1D, seed_gaussian1D, pretty_print,\
-        crunch_split_params, fit_prep2, compute_fit_quality
+        crunch_split_params, fit_prep2, compute_fit_quality,\
+        polylog1D, polylog_fit1D, seed_polylog1D
 
 import pdb
 
 base_dir = '\\\\UNOBTAINIUM\\Carmen_Sandiego\\Data'
+
+# Default location of the polylog lookup table (.mat) shipped with the app,
+# used by the degenerate-Fermi-gas ("fermi") fit.  Sits next to this module.
+POLYLOG_TABLE_DEFAULT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     'polylog_table.mat')
 
 ##########################################################################
 # The experiment object (define BEFORE analysis object!)
@@ -57,9 +63,18 @@ class Experiment( HasTraits ):
         desc="time of flight, in ms",
         label = "TOF")
 
-    atoms = Enum("Rb", "K", 
+    atoms = Enum("Rb", "K",
         desc="the species probed",
         label = "Species")
+
+    fit_type = Enum("gaussian", "fermi",
+        desc="cloud fit model: gaussian (thermal/BEC) or fermi (degenerate "
+             "Fermi gas polylog fit, for K-40)",
+        label="Fit type")
+
+    polylog_table_file = File(POLYLOG_TABLE_DEFAULT,
+        desc="path to the polylog lookup table (.mat) used by the fermi fit",
+        label="Polylog table")
 
     trap_freq_ax = CFloat(200, 
         desc="the trap frequency in the axial (longitudinal) direction, in Hz",
@@ -81,9 +96,12 @@ class Experiment( HasTraits ):
     view = View(Group(
              Group( Item('imaging', width=-120),
                     Item('atoms', width=-60),
+                    Item('fit_type', width=-60),
                     Item('detuning', width=-40),
                     Item('tof', width=-40),
                    ),
+             Item('polylog_table_file', width=-200,
+                  visible_when="fit_type == 'fermi'"),
              spring,
              Group( Item('view_point', show_label=True, width=-80),
                     Group(
@@ -233,6 +251,8 @@ class Analysis( HasTraits ):
     # and units for these physical parameters
     phys_units = {  'N_fit':'',
                     'TxoTf':'',
+                    'ToTf':'',
+                    'fugacity':'',
                     'N_pix_sum':'',
                     'Tx':'kelvin',
                     'Ty':'kelvin',
@@ -270,6 +290,8 @@ class Analysis( HasTraits ):
         """
         return {'N_fit':zeros(self._history_len),\
                 'TxoTf':zeros(self._history_len),\
+                'ToTf':zeros(self._history_len),\
+                'fugacity':zeros(self._history_len),\
                 'N_pix_sum':zeros(self._history_len),\
                 'Tx':zeros(self._history_len),\
                 'Ty':zeros(self._history_len),\
@@ -341,7 +363,14 @@ class Analysis( HasTraits ):
     
     # The index of the run in the sequence. It is incremented at each run, and
     # is put to zero when the data is saved.
-    shot_number = -1 
+    shot_number = -1
+
+    # Polylog lookup-table interpolators for the fermi fit.  Built on demand by
+    # _ensure_polylog_table() from experiment.polylog_table_file and cached.
+    _polylog_F = None            # Li_{5/2}(-e^u) interpolator (the fit model)
+    _polylog_G = None            # Li_3(-e^u) interpolator (N and T/T_F)
+    _polylog_ok = False          # True when a valid table is currently loaded
+    _polylog_loaded_path = None  # path of the currently-loaded table
     
     # A pointer to the object where the experimental parameters are stored.
     experiment = Instance(Experiment)
@@ -468,6 +497,53 @@ class Analysis( HasTraits ):
         """
         return Thread()
 
+    def _ensure_polylog_table(self):
+        """ Load and validate the polylog lookup table pointed to by
+            experiment.polylog_table_file, building interpolators for
+            Li_{5/2}(-e^u) (the fit model) and Li_3(-e^u) (physics conversions).
+
+            Returns True on success.  Reloads only when the path changes.  On
+            any problem (missing file, unreadable, malformed) prints a clear
+            message and returns False so the caller falls back to a gaussian
+            fit rather than producing garbage.
+        """
+        path = self.experiment.polylog_table_file
+        # Cheap fast-path: already loaded this exact file.
+        if self._polylog_ok and (path == self._polylog_loaded_path):
+            return True
+        self._polylog_ok = False
+        self._polylog_loaded_path = path
+        if (not path) or (not os.path.exists(path)):
+            print "**** polylog table file not found: %s ****" % path
+            return False
+        try:
+            tbl = io.loadmat(path)
+            u = tbl['u'].ravel()
+            Li52 = tbl['Li52'].ravel()
+            Li3 = tbl['Li3'].ravel()
+        except Exception, inst:
+            print "**** couldn't load polylog table: %s ****" % path
+            print inst
+            return False
+        # Validate shapes and that the grid is usable for interpolation.
+        if (u.shape[0] < 2) or (Li52.shape[0] != u.shape[0])\
+                or (Li3.shape[0] != u.shape[0]):
+            print "**** polylog table has missing/mismatched arrays ****"
+            return False
+        if not (diff(u) > 0).all():
+            print "**** polylog table 'u' grid is not strictly increasing ****"
+            return False
+        # Scalar fill_value (0.0) keeps compatibility with the old scipy on the
+        # lab machine; the deep wings (u below the grid) genuinely go to ~0, and
+        # the log-fugacity q stays within the tabulated range in practice.
+        self._polylog_F = interpolate.interp1d(u, Li52, bounds_error=False,
+                                               fill_value=0.0)
+        self._polylog_G = interpolate.interp1d(u, Li3, bounds_error=False,
+                                               fill_value=0.0)
+        self._polylog_ok = True
+        print "Loaded polylog table: %s (%d points)" % (path, u.shape[0])
+        return True
+
     def _save_files_changed(self, new_save_files):
         """ Check that the file_name string is not empty
         """
@@ -585,9 +661,25 @@ class Analysis( HasTraits ):
         R_h_gseed, R_v_gseed = seed_gaussian1D(R_h_xdata, R_h_gdata, R_v_xdata, R_v_gdata,\
                                             self.matrix_view)
         
+        # Choose the MAIN-ROI fit model: gaussian (default) or fermi (polylog).
+        # The fermi fit only runs if a valid polylog table is loaded; otherwise
+        # we warn and fall back to gaussian so a bad/missing file never yields
+        # silent garbage.  The L/R split boxes always stay gaussian.
+        use_fermi = (self.experiment.fit_type == 'fermi')\
+                    and self._ensure_polylog_table()
+        if (self.experiment.fit_type == 'fermi') and (not use_fermi):
+            print "Fermi fit requested but polylog table invalid; using gaussian."
+
         # Perform the fits.
-        h_fit = gfit1D(h_xdata, h_gdata, h_gseed)
-        v_fit = gfit1D(v_xdata, v_gdata, v_gseed)
+        if use_fermi:
+            h_pseed, v_pseed = seed_polylog1D(h_gseed, v_gseed)
+            h_fit = polylog_fit1D(h_xdata, h_gdata, h_pseed, self._polylog_F)
+            v_fit = polylog_fit1D(v_xdata, v_gdata, v_pseed, self._polylog_F)
+            fit_model = lambda x, p: polylog1D(x, p, self._polylog_F)
+        else:
+            h_fit = gfit1D(h_xdata, h_gdata, h_gseed)
+            v_fit = gfit1D(v_xdata, v_gdata, v_gseed)
+            fit_model = gaussian1D
 
         L_h_fit = gfit1D(L_h_xdata, L_h_gdata, L_h_gseed)
         L_v_fit = gfit1D(L_v_xdata, L_v_gdata, L_v_gseed)
@@ -595,20 +687,24 @@ class Analysis( HasTraits ):
         R_h_fit = gfit1D(R_h_xdata, R_h_gdata, R_h_gseed)
         R_v_fit = gfit1D(R_v_xdata, R_v_gdata, R_v_gseed)
 
-        # Compute the relevant physical parameters.
+        # Compute the relevant physical parameters.  For a fermi fit, pass the
+        # polylog interpolators so crunch_params can compute N, fugacity, T/T_F.
+        ft = 'f' if use_fermi else 'g'
         self.phys_params = crunch_params(self.experiment, self.camera,\
             self.matrix_view, h_fit, v_fit, L_h_fit, L_v_fit, R_h_fit, R_v_fit,\
-                                         pix_sum, pix_sum_left, pix_sum_right, self._stored_data_list)
+                                         pix_sum, pix_sum_left, pix_sum_right, self._stored_data_list,\
+                                         fit_type=ft, F_interp=self._polylog_F, G_interp=self._polylog_G)
         # Compute atom number in left, right regions; fraction too
         self.splitting.N_ps_left, self.splitting.N_ps_right, \
             self.splitting.p_L = \
             crunch_split_params(self.experiment, self.camera,\
                 pix_sum_left, pix_sum_right)
-        # Goodness-of-fit of the 1D gaussian fits against the profile data.
+        # Goodness-of-fit of the 1D fits against the profile data.  'fit_model'
+        # is gaussian1D or a polylog1D closure depending on the chosen fit.
         rmse, sigma_prod, n_ratio, goodFit = compute_fit_quality(h_xdata,\
             h_gdata, h_fit, v_xdata, v_gdata, v_fit, self.rmse_tol,\
             self.sigma_prod_tol, self.phys_params['N_fit'],\
-            self.phys_params['N_pix_sum'], self.n_factor_tol)
+            self.phys_params['N_pix_sum'], self.n_factor_tol, model=fit_model)
         self.phys_params['RMSE'] = rmse
         self.phys_params['sigmaProd'] = sigma_prod
         self.phys_params['N_ratio'] = n_ratio
@@ -628,14 +724,14 @@ class Analysis( HasTraits ):
             plot_axes1.cla()
             # plot horiz. secition and fit of gaussian data 
             plot_axes1.plot(h_xdata, h_gdata, "b-")
-            plot_axes1.plot(h_xdata, gaussian1D(h_xdata, h_fit), "r")
+            plot_axes1.plot(h_xdata, fit_model(h_xdata, h_fit), "r")
             plot_axes1.set_title('horizontal [X]')
             plot_axes1.grid()
             # Right hand plot
             plot_axes2 = self.plot_window.figure.add_subplot(1,2,2) 
             plot_axes2.cla()
             plot_axes2.plot(v_xdata, v_gdata, "g-")
-            plot_axes2.plot(v_xdata, gaussian1D(v_xdata, v_fit), "r")
+            plot_axes2.plot(v_xdata, fit_model(v_xdata, v_fit), "r")
             plot_axes2.set_title('vertical [Y]')
             plot_axes2.grid()
         else:
@@ -683,6 +779,8 @@ class Analysis( HasTraits ):
                 Tx:  %s kelvin\n\
                 Ty:  %s kelvin\n\
                 Tx/TF:  %s\n\
+                T/TF (fugacity):  %s\n\
+                fugacity:  %s\n\
                 sigmaX:  %s pixels\n\
                 sigmaY:  %s pixels\n\
                 Xc:  %s pixels\n\
@@ -708,6 +806,8 @@ class Analysis( HasTraits ):
                 pretty_print(self.phys_params['Tx']),\
                 pretty_print(self.phys_params['Ty']),\
                 pretty_print(self.phys_params['TxoTf']),\
+                pretty_print(self.phys_params['ToTf']),\
+                pretty_print(self.phys_params['fugacity']),\
                 pretty_print(self.phys_params['sigmaX']),\
                 pretty_print(self.phys_params['sigmaY']),\
                 pretty_print(self.phys_params['x_centre']),\

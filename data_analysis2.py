@@ -33,6 +33,21 @@ def gfit1D(Xdata, Gdata, p0):
     fit,success = optimize.leastsq(errfunc, p0.copy(), args = (Xdata,Gdata))
     return fit
 
+# --- 1D polylog (Fermi-gas) fit to 2D image data array ---------
+def polylog_fit1D(Xdata, Gdata, p0, F_interp):
+    """ Fit data 'Gdata' to the 1D polylog Fermi-gas profile (see 'polylog1D')
+        over the data range 'Xdata'.  'F_interp' interpolates Li_{5/2}(-e^u)
+        from the lookup table.
+
+        p0 is the array (5 values) of initial guesses:
+        p0[0]=amplitude, p0[1]=width**2, p0[2]=centre, p0[3]=background,
+        p0[4]=q (log-fugacity).
+    """
+    fitfunc = lambda p, x: polylog1D(x, p, F_interp)
+    errfunc = lambda p, x, val: fitfunc(p, x) - val
+    fit, success = optimize.leastsq(errfunc, p0.copy(), args=(Xdata, Gdata))
+    return fit
+
 # --- A function to crop down a data array --------
 def crop(imgarray,xmin,xmax,ymin,ymax):
     """ Crop array 'imgarray' down to new limits defined by xmin,xmax,ymin,ymax.
@@ -89,6 +104,35 @@ def gaussian1D(x, params):
     """
     out = params[0]*exp( -(x-params[2])**2 /(2*params[1]) ) + params[3]
     return out
+
+def polylog1D(x, params, F_interp):
+    """ 1D degenerate-Fermi-gas ("polylog") profile.
+
+        The ROI-summed optical-density profile of a harmonically trapped ideal
+        Fermi gas after time-of-flight is
+
+            f(x) = A * F(u) / F(q) + bg ,   u = q - (x-x0)^2 / (2 sigma^2)
+
+        where F(u) = Li_{5/2}(-e^u) is supplied as the interpolator 'F_interp'
+        (built from the lookup table) and q = log(fugacity).
+
+        params[0] = amplitude A (peak height above background)
+        params[1] = width**2 (sigma**2)
+        params[2] = peak centre x0
+        params[3] = constant background bg
+        params[4] = q = log(fugacity)
+
+        The parameter layout deliberately matches 'gaussian1D' in slots 0-3 so
+        downstream code that reads fit[1] (sigma^2) / fit[2] (centre) still works.
+    """
+    A = params[0]
+    # Guard against the unconstrained fit driving the width to zero/negative.
+    sig2 = abs(params[1]) + 1e-12
+    x0 = params[2]
+    bg = params[3]
+    q = params[4]
+    u = q - (x - x0) ** 2 / (2 * sig2)
+    return A * F_interp(u) / F_interp(q) + bg
 
 def gaussian2D(X, Y, params):
     """ Definition of 2D gaussian.  
@@ -371,6 +415,31 @@ def seed_gaussian1D(h_xdata, h_gdata, v_xdata, v_gdata, matrix_view_object):
     return (array([h_ampd, h_sigma2, h_c, h_bg]), 
                 array([v_ampd, v_sigma2, v_c, v_bg]))
 
+def seed_polylog1D(h_gseed, v_gseed, q0=1.0):
+    """ Build 5-parameter seeds for the polylog (Fermi) fit by reusing the
+        gaussian seeds (amplitude, width**2, centre, background) from
+        'seed_gaussian1D' and appending an initial log-fugacity guess 'q0'.
+    """
+    h_seed = concatenate((h_gseed, array([q0])))
+    v_seed = concatenate((v_gseed, array([q0])))
+    return h_seed, v_seed
+
+def atom_constants(atoms):
+    """ Return (mass [kg], natural linewidth gamma [Hz], wavelength [m]) for the
+        imaging transition of the given species string.  Single source of truth
+        shared by 'crunch_params' and 'crunch_split_params'.
+    """
+    if atoms == 'Rb':
+        # Rb-87 D2 line.
+        return 1.44e-25, 5.98e6, 780.027e-9
+    elif atoms == 'K':
+        # K-40 D2 line (fermionic potassium).
+        return 6.64e-26, 6.035e6, 766.70e-9
+    else:
+        print "**** bad string passed for experiment.atom ****"
+        # Fall back to Rb-87 so callers don't hit undefined names.
+        return 1.44e-25, 5.98e6, 780.027e-9
+
 def crunch_split_params(experiment_object, camera_object, pix_sum_left,\
             pix_sum_right):
     """ Compute atom number in left/right regions given pixel sum info,
@@ -390,21 +459,12 @@ def crunch_split_params(experiment_object, camera_object, pix_sum_left,\
     umY = 2.72e-6 * cam.binning_Y   # 13 [um/pix] / 4 = 3.25 [um/pix] 
     
     # Define atomic mass [kg], natural linewidth [Hz] and wavelength [m].
-    if expt.atoms == 'Rb':
-        m = 1.44e-25
-        gamma = 5.98e6 # Real frequency units [Hz] 
-        wlen = 780.027e-9
-    elif expt.atoms == 'K':
-        m = 6.67e-26
-        gamma = 6e6 # FIXME: get the correct value here
-        wlen = 767.7017e-9
-    else:
-        print "**** bad string passed for experiment.atom ****"
+    m, gamma, wlen = atom_constants(expt.atoms)
     # Imaging beam detuning in units of half-natural-linewidhts
     det = expt.detuning*1e6 / (gamma/2)
     # Absorption cross-section
     sigma_absn = ((3*(wlen)**2)/(2*pi)) / (1 + det**2)
-    # Compute the pixel sum atom numbers and left fraction 
+    # Compute the pixel sum atom numbers and left fraction
     N_ps_left = pix_sum_left*umX*umY / sigma_absn
     N_ps_right = pix_sum_right*umX*umY / sigma_absn
     p_L = N_ps_left / (N_ps_left + N_ps_right)
@@ -414,7 +474,8 @@ def crunch_split_params(experiment_object, camera_object, pix_sum_left,\
 def crunch_params(experiment_object, camera_object, matrix_view_object,\
             h_fit, v_fit, L_h_fit, L_v_fit, R_h_fit, R_v_fit,\
             pix_sum,  pix_sum_left,\
-            pix_sum_right, param_list, fit_type="g"):
+            pix_sum_right, param_list, fit_type="g",\
+            F_interp=None, G_interp=None):
     """ Function which converts results of the data fit into relevant
         physical parameters to be displayed and (possibly) saved.
         Gaussian fit (fit_type == "g"):
@@ -456,16 +517,7 @@ def crunch_params(experiment_object, camera_object, matrix_view_object,\
     else:
         print "**** bad string passed for experiment.view_point ****"
     # Define atomic mass [kg], natural linewidth [Hz] and wavelength [m].
-    if expt.atoms == 'Rb':
-        m = 1.44e-25
-        gamma = 5.98e6 # Real frequency units [Hz] 
-        wlen = 780.027e-9
-    elif expt.atoms == 'K':
-        m = 6.67e-26
-        gamma = 6e6 # FIXME: get the correct value here
-        wlen = 767.7017e-9
-    else:
-        print "**** bad string passed for experiment.atom ****"
+    m, gamma, wlen = atom_constants(expt.atoms)
     # Imaging beam detuning in units of half-natural-linewidhts
     det = expt.detuning*1e6 / (gamma/2)
     # Absorption cross-section
@@ -545,7 +597,65 @@ def crunch_params(experiment_object, camera_object, matrix_view_object,\
         phys_params['z'] =  \
            (phys_params['N_R'] - phys_params['N_L']) / (phys_params['N_L'] + phys_params['N_R'])  
     elif fit_type == 'f':
-        print "do some fermi fit analysis here"
+        # --- Degenerate Fermi gas (polylog) fit analysis --------------------
+        # h_fit / v_fit are 5-parameter polylog fits [A, sigma^2, x0, bg, q]
+        # (see 'polylog1D'); q = log(fugacity).  F_interp/G_interp interpolate
+        # Li_{5/2}(-e^u) and Li_3(-e^u) from the lookup table.
+        if (F_interp is None) or (G_interp is None):
+            print "**** fermi fit_type but no polylog interpolators passed ****"
+            return phys_params
+        qx = h_fit[4]
+        # Gaussian-equivalent widths after TOF [pixels]
+        phys_params['sigmaX'] = sqrt(abs(h_fit[1]))
+        phys_params['sigmaY'] = sqrt(abs(v_fit[1]))
+        # Fugacity and degeneracy from the horizontal fit (headline numbers).
+        F_qx = float(F_interp(qx))
+        G_qx = float(G_interp(qx))
+        phys_params['fugacity'] = exp(qx)
+        # T/T_F = ( -6 Li_3(-e^q) )^(-1/3)
+        phys_params['ToTf'] = (-6.0 * G_qx) ** (-1.0/3.0)
+        # Atom number from the polylog fit.  Same as the gaussian formula but
+        # scaled by the polylog factor Li_3(-e^q)/Li_{5/2}(-e^q) = G(q)/F(q).
+        if mv.data_subset == 'ROI sum':
+            phys_params['N_fit'] = \
+                h_fit[0]*sqrt(2*pi)*phys_params['sigmaX']*umX*umY / sigma_absn\
+                * (G_qx / F_qx)
+        elif mv.data_subset == 'cursor':
+            phys_params['N_fit'] = \
+                2*pi*h_fit[0] *(phys_params['sigmaX'] *umX)**2 / sigma_absn\
+                * (G_qx / F_qx)
+        else:
+            print "**** bad string passed for mv.data_subset ***"
+            phys_params['N_fit'] = -1
+        # Pixel sum (O.D. sum) atom number
+        phys_params['N_pix_sum'] = pix_sum*umX*umY / sigma_absn
+        # Temperatures [Kelvin] from the gaussian-equivalent widths (as in 'g')
+        phys_params['Tx'] = \
+            ( m*omegaX**2 *abs(h_fit[1])*(umX**2) )/( kb*(1+omegaX**2 * tof**2) )
+        phys_params['Ty'] = \
+            ( m*omegaY**2 *abs(v_fit[1])*(umY**2) )/( kb*(1+omegaY**2 * tof**2) )
+        # Peak centres [pixels]
+        phys_params['x_centre'] = h_fit[2]
+        phys_params['y_centre'] = v_fit[2]
+        # Keep the gaussian-style TxoTf (Tx / Tf(N)) populated for continuity.
+        Tf = hbar*omega_bar*( 6*abs(phys_params['N_fit']) )**(0.333333) / kb
+        phys_params['TxoTf'] = phys_params['Tx'] / Tf
+        # Split-box parameters come from the (still gaussian) L/R fits, exactly
+        # as in the 'g' branch.
+        phys_params['L_y'] = L_v_fit[2]
+        phys_params['R_y'] = R_v_fit[2]
+        phys_params['L_x'] = L_h_fit[2]
+        phys_params['R_x'] = R_h_fit[2]
+        phys_params['delta_y'] = L_v_fit[2] - R_v_fit[2]
+        phys_params['delta_x'] = L_h_fit[2] - R_h_fit[2]
+        phys_params['N_L'] = pix_sum_left*umX*umY / sigma_absn
+        phys_params['N_R'] = pix_sum_right*umX*umY / sigma_absn
+        phys_params['p_L'] = \
+            phys_params['N_L'] / (phys_params['N_L'] + phys_params['N_R'])
+        phys_params['z'] =  \
+           (phys_params['N_R'] - phys_params['N_L']) / (phys_params['N_L'] + phys_params['N_R'])
+        print "T/T_F = %3.3f  (fugacity = %3.3e)" % \
+            (phys_params['ToTf'], phys_params['fugacity'])
     else: print "**** bad string for fit_type *****"
     # Check for values which are too large or too small for matlab
     #for key, value in phys_params.iteritems():
@@ -555,7 +665,8 @@ def crunch_params(experiment_object, camera_object, matrix_view_object,\
     return phys_params
 
 def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
-                        rmse_tol, sigma_prod_tol, N_fit, N_pix_sum, n_factor):
+                        rmse_tol, sigma_prod_tol, N_fit, N_pix_sum, n_factor,
+                        model=gaussian1D):
     """ Goodness-of-fit of the 1D gaussian fits against the profile data.
 
         Residuals are taken between the fitted gaussians (see 'gaussian1D')
@@ -577,9 +688,11 @@ def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
             n_ratio    - N_fit / N_pix_sum (0 if N_pix_sum is 0)
             goodFit    - 1 if ALL checks pass, else 0.
     """
-    # Residuals of each 1D fit against its profile data.
-    h_res = gaussian1D(h_xdata, h_fit) - h_gdata
-    v_res = gaussian1D(v_xdata, v_fit) - v_gdata
+    # Residuals of each 1D fit against its profile data.  'model' is the fitted
+    # profile function taking (xdata, fit); defaults to the gaussian, but the
+    # fermi (polylog) path passes a polylog1D closure.
+    h_res = model(h_xdata, h_fit) - h_gdata
+    v_res = model(v_xdata, v_fit) - v_gdata
     # Pool both profiles.
     res = concatenate((h_res, v_res))
 
@@ -588,7 +701,7 @@ def compute_fit_quality(h_xdata, h_gdata, h_fit, v_xdata, v_gdata, v_fit,
 
     # Product of the fitted gaussian widths.  h_fit[1]/v_fit[1] are sigma**2
     # (see gfit1D), matching the 'sigmaX'/'sigmaY' computed in crunch_params.
-    sigma_prod = sqrt(h_fit[1]) * sqrt(v_fit[1])
+    sigma_prod = sqrt(abs(h_fit[1])) * sqrt(abs(v_fit[1]))
 
     # Ratio of the two atom-number estimates (for display / history).
     if N_pix_sum != 0:
