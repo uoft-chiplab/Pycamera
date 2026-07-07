@@ -9,6 +9,10 @@ os.environ['NUMERIX']='numpy'
 
 # Import scipy, the grand unified scientific module !
 from scipy import *
+# Import the interpolate submodule explicitly.  'io'/'optimize' happen to be
+# bound by the star-import above (used elsewhere), but 'interpolate' was not
+# previously referenced, so bind it explicitly to be safe on old scipy builds.
+from scipy import interpolate
 
 # Import figure, plotting commands from plyab for 'analysys window'
 #from pylab import figure, show, subplot, imshow
@@ -689,7 +693,10 @@ class Analysis( HasTraits ):
 
         # Compute the relevant physical parameters.  For a fermi fit, pass the
         # polylog interpolators so crunch_params can compute N, fugacity, T/T_F.
-        ft = 'f' if use_fermi else 'g'
+        if use_fermi:
+            ft = 'f'
+        else:
+            ft = 'g'
         self.phys_params = crunch_params(self.experiment, self.camera,\
             self.matrix_view, h_fit, v_fit, L_h_fit, L_v_fit, R_h_fit, R_v_fit,\
                                          pix_sum, pix_sum_left, pix_sum_right, self._stored_data_list,\

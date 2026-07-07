@@ -66,10 +66,20 @@ def build_table(u_min=-30.0, u_max=30.0, n_points=4000):
 
 
 def main():
-    out = sys.argv[1] if len(sys.argv) > 1 else "polylog_table.mat"
-    u_min = float(sys.argv[2]) if len(sys.argv) > 2 else -30.0
-    u_max = float(sys.argv[3]) if len(sys.argv) > 3 else 30.0
-    n_points = int(sys.argv[4]) if len(sys.argv) > 4 else 4000
+    # Plain if/else (not conditional expressions) so this runs on Python 2
+    # versions earlier than 2.5 too.
+    out = "polylog_table.mat"
+    if len(sys.argv) > 1:
+        out = sys.argv[1]
+    u_min = -30.0
+    if len(sys.argv) > 2:
+        u_min = float(sys.argv[2])
+    u_max = 30.0
+    if len(sys.argv) > 3:
+        u_max = float(sys.argv[3])
+    n_points = 4000
+    if len(sys.argv) > 4:
+        n_points = int(sys.argv[4])
 
     print("Building polylog table: u in [%g, %g], %d points ..."
           % (u_min, u_max, n_points))
