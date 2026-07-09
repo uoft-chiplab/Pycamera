@@ -387,6 +387,11 @@ class Analysis( HasTraits ):
     
     # user-specified param for cost writing
     cost_string = Str('', desc="fit parameter to be used as cost function for ML optimization.", label="")
+
+    # Value written by write_cost() when the fit is bad (goodFit is false).
+    bad_fit_value = CFloat(0.0,
+        desc="cost value written for a bad fit during ML optimization.",
+        label="Bad fit")
     
     # The view attribute, used by traitsUI to create a representation.
     view = View(
@@ -401,6 +406,7 @@ class Analysis( HasTraits ):
                 Item('clear_history', editor=ButtonEditor(), show_label=False,
                     visible_when='shot_number >= _history_len - 1',),
                 Item('cost_string', show_label=False, springy=False, width=-30),
+                Item('bad_fit_value', width=-40),
                 orientation = 'horizontal',
             ),
             Item('file_name', show_label=False, springy=False, ),
@@ -732,11 +738,12 @@ class Analysis( HasTraits ):
     def write_cost(self, param_str):
         """
             For ML optimization. After a fit, write selected parameter to cost_ddd.txt
-            Only write the real value when the fit is good; otherwise write 0.
+            Only write the real value when the fit is good; otherwise write the
+            user-defined 'bad_fit_value' (default 0).
         """
         cost = self.phys_params[param_str]
         if not self.phys_params.get('goodFit'):
-            cost = 0
+            cost = self.bad_fit_value
         index = self.shot_number
         filename = "cost_%03d.txt" % index
         filepath = os.path.dirname(self.file_name)
